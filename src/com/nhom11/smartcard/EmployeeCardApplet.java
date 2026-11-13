@@ -1,6 +1,6 @@
-/** 
+/**
  * Copyright (c) 1998, 2026, Oracle and/or its affiliates.
- * 
+ *
  */
 
 
@@ -10,7 +10,7 @@ import javacard.framework.*;
 
 /**
  * Applet class
- * 
+ *
  * @author <user>
  */
 
@@ -18,7 +18,7 @@ public class EmployeeCardApplet extends Applet {
 
     /**
      * Installs this applet.
-     * 
+     *
      * @param bArray
      *            the array containing installation parameters
      * @param bOffset
@@ -39,7 +39,7 @@ public class EmployeeCardApplet extends Applet {
 
     /**
      * Processes an incoming APDU.
-     * 
+     *
      * @see APDU
      * @param apdu
      *            the incoming APDU
