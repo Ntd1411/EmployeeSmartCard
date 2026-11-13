@@ -1,0 +1,13 @@
+# Java Card and Java build output
+/.gen/
+/bin/
+/deliverables/
+*.class
+
+# Eclipse local state
+/.metadata/
+
+# Operating-system and editor files
+.DS_Store
+*~
+*.swp
