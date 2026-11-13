@@ -11,8 +11,9 @@
 | Codex | Add mandatory work-log rule and correct the filename casing | ✅ Done | Updated `AGENTS.md` to require `WORKLOG.md`; removed the mistakenly created lowercase `worklog.md`; verified both files | < 10m |
 | Codex | Prepare the existing project for GitHub | ✅ Done | Attached the remote `main` history; added `.gitignore`; removed a machine-specific Javadoc path from `.classpath`; checked for secrets | < 10m |
 | Codex | Clean source formatting before publication | ✅ Done | Removed trailing whitespace from `EmployeeCardApplet.java`; `git diff --check` passes | < 5m |
+| Codex | Publish the project to GitHub | ✅ Done | Published the prepared project snapshot to `Ntd1411/EmployeeSmartCard` on `main` and preserved the existing remote history | < 10m |
 
-**Tổng kết ngày:** Đã bổ sung quy định ghi nhật ký, chuẩn hóa `WORKLOG.md`, và chuẩn bị dự án để commit lên GitHub.
+**Tổng kết ngày:** Đã bổ sung quy định ghi nhật ký, chuẩn hóa `WORKLOG.md`, thiết lập Git và xuất dự án lên nhánh `main` trên GitHub.
 
 ---
 
