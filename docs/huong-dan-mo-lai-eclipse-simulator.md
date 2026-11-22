@@ -25,7 +25,7 @@ Cấu hình đã dùng từng có input `D:\Projects\EmployeeSmartCard\spikes\ph
 - Nếu chỉ mở lại và dùng trạng thái đã lưu, trong Simulator Console chạy `List;` để xem các applet. `EmployeeCardApplet` có applet AID `1122334455` (package AID `112233445511`). Nếu đã cài đúng phiên bản, không cần Load/Install lại; có thể `Select 1122334455;` để kiểm tra.
 - Nếu applet chưa có (`List;` không liệt kê AID hoặc SELECT trả `6A82`), sau khi kết nối và build CAP, trong menu lệnh ▼ chọn **EmployeeSmartCard → CAP: EmployeeSmartCard → Load, Install, Select**. Kiểm tra cả ba bước đều thành công, không chỉ nhìn thấy menu. Khi lỗi, dừng và ghi lại log.
 - **Sau khi thay code applet**, CAP mới không tự cập nhật instance đã cài. Cần thay phiên bản đã cài trên simulator: thao tác uninstall applet và unload package cũ rồi Load, Install, Select CAP mới. Việc này xóa trạng thái của instance bị gỡ, có thể ảnh hưởng các instance cùng package; chỉ thực hiện nếu chấp nhận mất dữ liệu thử và đã xác định ảnh hưởng. Nếu lỗi hoặc không rõ các instance đang có, dừng để kiểm tra, không nhấn lại tùy tiện. Không gỡ `PhotoCardSpike` nếu không cần.
-- Bản code đang thử giới hạn **8192 byte** đã được sửa nhưng **chưa xác nhận build, cài và chạy**. Instance cũ vẫn là bản 4096 byte cho đến khi CAP mới được cài. Không dùng kết quả cũ làm bằng chứng cho bản mới.
+- Bản thử **8192 byte** đã được build, cài và đọc lại đúng file giả 8192 byte trên simulator một thẻ theo log và ảnh người dùng. Nếu khởi động lại bằng EEPROM cũ, instance trong đó có thể vẫn là bản 4096 byte hoặc không có applet: kiểm tra trạng thái thực tế, không giả định là bản mới.
 
 ## 4. Chạy host và kết nối
 

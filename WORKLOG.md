@@ -12,7 +12,7 @@
 | Notion AI | Thử tích hợp giao thức byte ảnh vào applet hiện có trên nhánh riêng | 🔄 WIP | Bổ sung BEGIN/WRITE/FINISH/READ có kiểm tra PIN và trạng thái. Theo log người dùng, simulator từ chối READ trước PIN và ghi/đọc 8 byte sau PIN thành công. Chưa kiểm thử hồi quy, file ảnh hay host; xem `docs/photo-card-experiment.md`. | — |
 | Notion AI | Viết tài liệu lý thuyết lưu ảnh thử nghiệm | ✅ Done | Giải thích APDU, cách chia đoạn, kết quả simulator, EEPROM, giới hạn bảo mật và các bước còn lại tại `docs/ly-thuyet-luu-anh-tren-the.md`. | — |
 | Notion AI | Thử nối file giả vào host hiện có | 🔄 WIP | Viết tab chọn file giả và đối chiếu byte qua simulator một thẻ. Người dùng xác nhận 7 kiểm tra kênh APDU giả đạt; giao diện báo đọc lại đúng 3172 và 4096 byte, từ chối file 4097 byte ở giới hạn cũ. Chưa kiểm thử hồi quy hoặc thẻ thật. | — |
-| Notion AI | Nâng giới hạn thử ảnh và hướng dẫn mở lại Eclipse | 🔄 WIP | Đổi giới hạn thử trong applet và host thành 8192 byte, cập nhật test và tài liệu; thêm hướng dẫn khởi động. Chưa build, cài hay thử mức 8192 trên simulator. | — |
+| Notion AI | Nâng giới hạn thử ảnh và hướng dẫn mở lại Eclipse | 🔄 WIP | Đổi giới hạn thử thành 8192 byte và cập nhật tài liệu. Theo log người dùng, CAP build, cài và giao diện đọc lại đúng file giả 8192 byte trên simulator một thẻ. Chưa kiểm thử hồi quy, nhiều thẻ hoặc phần cứng thật. | — |
 
 ---
 
