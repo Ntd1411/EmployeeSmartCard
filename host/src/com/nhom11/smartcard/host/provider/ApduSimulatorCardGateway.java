@@ -16,6 +16,12 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 import javax.smartcardio.Card;
 import javax.smartcardio.CardChannel;
@@ -42,6 +48,7 @@ public class ApduSimulatorCardGateway implements CardGateway, AutoCloseable {
     public static final int INS_ATTENDANCE_PUNCH = 0x40;
     public static final int INS_GET_LAST_ATTENDANCE = 0x42;
     public static final int INS_CHECK_AREA_ACCESS = 0x50;
+    public static final long DEFAULT_CONNECT_TIMEOUT_MS = 4000L;
 
     private static final String SOCKET_PROVIDER_CLASS = "com.oracle.smartcardio.socket.SocketCardTerminalProvider";
     private static final String SOCKET_FACTORY_TYPE = "SocketCardTerminalFactoryType";
@@ -62,14 +69,29 @@ public class ApduSimulatorCardGateway implements CardGateway, AutoCloseable {
     }
 
     /**
-     * Connects to the simulator over TCP, powers up the card, and selects the employee card applet.
+     * Connects to the simulator over TCP using the default timeout, powers up the card,
+     * and selects the employee card applet.
      *
      * @param host simulator hostname or IP address
      * @param port simulator port (default 9025)
-     * @throws IllegalStateException if socketprovider.jar is missing, simulator refuses connection,
+     * @throws IllegalStateException if socketprovider.jar is missing, simulator times out or refuses connection,
      *     or the applet AID 1122334455 is not installed
      */
     public synchronized void connect(String host, int port) {
+        connect(host, port, DEFAULT_CONNECT_TIMEOUT_MS);
+    }
+
+    /**
+     * Connects to the simulator over TCP with an interruptible timeout, powers up the card,
+     * and selects the employee card applet.
+     *
+     * @param host simulator hostname or IP address
+     * @param port simulator port (default 9025)
+     * @param timeoutMs connection and ATR handshake timeout in milliseconds
+     * @throws IllegalStateException if socketprovider.jar is missing, simulator times out or refuses connection,
+     *     or the applet AID 1122334455 is not installed
+     */
+    public synchronized void connect(String host, int port, long timeoutMs) {
         disconnect();
         if (host == null || host.isBlank()) {
             throw new IllegalArgumentException("Host simulator không được để trống.");
@@ -77,51 +99,90 @@ public class ApduSimulatorCardGateway implements CardGateway, AutoCloseable {
         if (port <= 0 || port > 65535) {
             throw new IllegalArgumentException("Cổng simulator phải nằm trong khoảng 1..65535.");
         }
+        if (timeoutMs <= 0L) {
+            throw new IllegalArgumentException("Timeout kết nối phải > 0 ms.");
+        }
+
+        final String trimmedHost = host.trim();
+        final long waitPresentMs = Math.min(Math.max(timeoutMs / 2L, 200L), 1000L);
+        ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "jcsl-connect");
+            t.setDaemon(true);
+            return t;
+        });
 
         try {
-            LoaderAndFactory loaded = openSocketTerminalFactory(host.trim(), port, explicitSocketJar);
-            this.ownedLoader = loaded.ownedLoader;
-
-            List<CardTerminal> terminals = loaded.factory.terminals().list();
-            if (terminals.isEmpty()) {
-                throw new IllegalStateException("Không tìm thấy SocketCardTerminal cho " + host + ":" + port);
-            }
-            CardTerminal terminal = terminals.get(0);
-            if (!terminal.waitForCardPresent(5000L)) {
-                throw new IllegalStateException("Không nhận được phản hồi từ simulator tại " + host + ":" + port);
-            }
-
-            Card connectedCard = terminal.connect("T=1");
-            CardChannel basicChannel = connectedCard.getBasicChannel();
-
-            CommandAPDU selectCmd = new CommandAPDU(0x00, 0xA4, 0x04, 0x00, APPLET_AID, 256);
-            ResponseAPDU selectResp = basicChannel.transmit(selectCmd);
-            lastApduSummary = formatApduSummary(0x00, 0xA4, 0x04, 0x00, APPLET_AID,
-                    selectResp.getSW(), selectResp.getData());
-
-            if (selectResp.getSW() != SW_NO_ERROR) {
+            Future<ConnectSession> future = executor.submit(() -> {
+                LoaderAndFactory loaded = openSocketTerminalFactory(trimmedHost, port, explicitSocketJar);
+                Card connectedCard = null;
                 try {
-                    connectedCard.disconnect(false);
-                } catch (CardException ignored) {
-                    // Best-effort cleanup on failed select.
-                }
-                if (selectResp.getSW() == 0x6A82) {
-                    throw new IllegalStateException(
-                            "Kết nối tới jcsl thành công nhưng Applet AID 1122334455 chưa được load/install trên Simulator.");
-                }
-                throw new IllegalStateException(
-                        "Không thể select applet trên jcsl (SW=" + String.format("0x%04X", selectResp.getSW()) + ").");
-            }
+                    List<CardTerminal> terminals = loaded.factory.terminals().list();
+                    if (terminals.isEmpty()) {
+                        throw new IllegalStateException("Không tìm thấy SocketCardTerminal cho " + trimmedHost + ":" + port);
+                    }
+                    CardTerminal terminal = terminals.get(0);
+                    if (!terminal.waitForCardPresent(waitPresentMs)) {
+                        throw new IllegalStateException(
+                                "Không nhận được phản hồi từ simulator tại " + trimmedHost + ":" + port);
+                    }
 
-            this.card = connectedCard;
-            this.channel = basicChannel;
-            this.connectedEndpoint = host.trim() + ":" + port;
-        } catch (Exception ex) {
-            disconnect();
-            if (ex instanceof IllegalStateException) {
-                throw (IllegalStateException) ex;
+                    connectedCard = terminal.connect("T=1");
+                    CardChannel basicChannel = connectedCard.getBasicChannel();
+
+                    CommandAPDU selectCmd = new CommandAPDU(0x00, 0xA4, 0x04, 0x00, APPLET_AID, 256);
+                    ResponseAPDU selectResp = basicChannel.transmit(selectCmd);
+                    String selectTrace = formatApduSummary(0x00, 0xA4, 0x04, 0x00, APPLET_AID,
+                            selectResp.getSW(), selectResp.getData());
+
+                    if (selectResp.getSW() != SW_NO_ERROR) {
+                        if (selectResp.getSW() == 0x6A82) {
+                            throw new IllegalStateException(
+                                    "Kết nối tới jcsl thành công nhưng Applet AID 1122334455 chưa được load/install trên Simulator.");
+                        }
+                        throw new IllegalStateException(
+                                "Không thể select applet trên jcsl (SW="
+                                        + String.format("0x%04X", selectResp.getSW()) + ").");
+                    }
+
+                    return new ConnectSession(loaded, connectedCard, basicChannel, selectTrace);
+                } catch (Exception ex) {
+                    if (connectedCard != null) {
+                        try {
+                            connectedCard.disconnect(false);
+                        } catch (CardException ignored) {
+                            // Best-effort cleanup on failed handshake.
+                        }
+                    }
+                    closeLoaderQuietly(loaded.ownedLoader);
+                    throw ex;
+                }
+            });
+
+            ConnectSession session = future.get(timeoutMs, TimeUnit.MILLISECONDS);
+            this.ownedLoader = session.loaded.ownedLoader;
+            this.card = session.card;
+            this.channel = session.channel;
+            this.connectedEndpoint = trimmedHost + ":" + port;
+            this.lastApduSummary = session.selectTrace;
+        } catch (TimeoutException ex) {
+            lastApduSummary = "Hết thời gian chờ kết nối tới jcsl (" + trimmedHost + ":" + port + ").";
+            throw new IllegalStateException(
+                    "Hết thời gian chờ kết nối tới jcsl (" + trimmedHost + ":" + port + ").\n"
+                    + "Lưu ý: jcsl chỉ cho phép 1 kết nối cùng lúc — hãy gõ 'disconnect;' trong APDU Console của Eclipse rồi thử lại.",
+                    ex);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Kết nối tới simulator bị gián đoạn.", ex);
+        } catch (ExecutionException ex) {
+            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+            if (cause instanceof IllegalStateException) {
+                throw (IllegalStateException) cause;
             }
-            throw new IllegalStateException("Không thể kết nối tới simulator " + host + ":" + port + " — " + ex.getMessage(), ex);
+            throw new IllegalStateException(
+                    "Không thể kết nối tới simulator " + trimmedHost + ":" + port + " — " + cause.getMessage(),
+                    cause);
+        } finally {
+            executor.shutdownNow();
         }
     }
 
@@ -643,6 +704,30 @@ public class ApduSimulatorCardGateway implements CardGateway, AutoCloseable {
             sb.append(String.format("%02X", b));
         }
         return sb.toString();
+    }
+
+    private static void closeLoaderQuietly(URLClassLoader loader) {
+        if (loader != null) {
+            try {
+                loader.close();
+            } catch (IOException ignored) {
+                // Best-effort cleanup.
+            }
+        }
+    }
+
+    private static final class ConnectSession {
+        final LoaderAndFactory loaded;
+        final Card card;
+        final CardChannel channel;
+        final String selectTrace;
+
+        ConnectSession(LoaderAndFactory loaded, Card card, CardChannel channel, String selectTrace) {
+            this.loaded = loaded;
+            this.card = card;
+            this.channel = channel;
+            this.selectTrace = selectTrace;
+        }
     }
 
     private static final class LoaderAndFactory {

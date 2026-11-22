@@ -36,6 +36,7 @@ import javax.swing.JPasswordField;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 
 /**
@@ -188,39 +189,77 @@ public class MainApp {
                 return;
             }
             char[] pinChars = pinField.getPassword();
-            try {
-                apduGateway.connect(host, port);
-                switchableGateway.useDelegate(apduGateway);
-                connectBtn.setEnabled(false);
-                verifyPinBtn.setEnabled(true);
-                readChipBtn.setEnabled(true);
-                disconnectBtn.setEnabled(true);
-                modeBadge.setText("Chế độ: Simulator jcsl (" + host + ":" + port + ")");
-                modeBadge.setForeground(UiTheme.COLOR_ALLOW_FG);
+            connectBtn.setEnabled(false);
+            hostField.setEnabled(false);
+            portField.setEnabled(false);
+            pinField.setEnabled(false);
+            verifyPinBtn.setEnabled(false);
+            readChipBtn.setEnabled(false);
+            disconnectBtn.setEnabled(false);
+            modeBadge.setText("Đang kết nối tới jcsl...");
+            modeBadge.setForeground(UiTheme.COLOR_NEUTRAL_FG);
 
-                if (pinChars.length > 0) {
-                    CardGateway.CardGatewayResult pinRes = apduGateway.verifyPin(pinChars);
-                    updateSimulatorTrace.run();
-                    if (!pinRes.isSuccess()) {
-                        JOptionPane.showMessageDialog(frame,
-                                "Đã kết nối tới jcsl nhưng xác thực PIN thất bại: " + pinRes.getMessage()
-                                        + "\nBạn có thể sửa PIN và bấm 'Verify PIN'.",
-                                "Cảnh báo PIN trên jcsl",
-                                JOptionPane.WARNING_MESSAGE);
+            new SwingWorker<ConnectOutcome, Void>() {
+                @Override
+                protected ConnectOutcome doInBackground() {
+                    try {
+                        apduGateway.connect(host, port);
+                        CardGateway.CardGatewayResult pinRes = null;
+                        if (pinChars.length > 0) {
+                            pinRes = apduGateway.verifyPin(pinChars);
+                        }
+                        return new ConnectOutcome(true, pinRes, null);
+                    } catch (Exception ex) {
+                        return new ConnectOutcome(false, null, ex.getMessage());
+                    } finally {
+                        Arrays.fill(pinChars, '\0');
                     }
-                } else {
-                    updateSimulatorTrace.run();
                 }
-            } catch (Exception ex) {
-                switchableGateway.useDelegate(virtualGateway);
-                modeBadge.setText("Chế độ: Thẻ ảo nội bộ");
-                modeBadge.setForeground(UiTheme.COLOR_NEUTRAL_FG);
-                updateSimulatorTrace.run();
-                JOptionPane.showMessageDialog(frame, ex.getMessage(), "Không kết nối được jcsl",
-                        JOptionPane.ERROR_MESSAGE);
-            } finally {
-                Arrays.fill(pinChars, '\0');
-            }
+
+                @Override
+                protected void done() {
+                    ConnectOutcome outcome;
+                    try {
+                        outcome = get();
+                    } catch (Exception ex) {
+                        outcome = new ConnectOutcome(false, null, ex.getMessage());
+                    }
+                    pinField.setEnabled(true);
+                    if (outcome.connected) {
+                        switchableGateway.useDelegate(apduGateway);
+                        connectBtn.setEnabled(false);
+                        hostField.setEnabled(false);
+                        portField.setEnabled(false);
+                        verifyPinBtn.setEnabled(true);
+                        readChipBtn.setEnabled(true);
+                        disconnectBtn.setEnabled(true);
+                        modeBadge.setText("Chế độ: Simulator jcsl (" + host + ":" + port + ")");
+                        modeBadge.setForeground(UiTheme.COLOR_ALLOW_FG);
+                        updateSimulatorTrace.run();
+                        if (outcome.pinResult != null && !outcome.pinResult.isSuccess()) {
+                            JOptionPane.showMessageDialog(frame,
+                                    "Đã kết nối tới jcsl nhưng xác thực PIN thất bại: "
+                                            + outcome.pinResult.getMessage()
+                                            + "\nBạn có thể sửa PIN và bấm 'Verify PIN'.",
+                                    "Cảnh báo PIN trên jcsl",
+                                    JOptionPane.WARNING_MESSAGE);
+                        }
+                    } else {
+                        switchableGateway.useDelegate(virtualGateway);
+                        connectBtn.setEnabled(true);
+                        hostField.setEnabled(true);
+                        portField.setEnabled(true);
+                        verifyPinBtn.setEnabled(false);
+                        readChipBtn.setEnabled(false);
+                        disconnectBtn.setEnabled(false);
+                        modeBadge.setText("Chế độ: Thẻ ảo nội bộ");
+                        modeBadge.setForeground(UiTheme.COLOR_NEUTRAL_FG);
+                        updateSimulatorTrace.run();
+                        JOptionPane.showMessageDialog(frame, outcome.errorMessage,
+                                "Không kết nối được jcsl", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
         });
 
         verifyPinBtn.addActionListener(e -> {
@@ -262,6 +301,8 @@ public class MainApp {
             apduGateway.disconnect();
             switchableGateway.useDelegate(virtualGateway);
             connectBtn.setEnabled(true);
+            hostField.setEnabled(true);
+            portField.setEnabled(true);
             verifyPinBtn.setEnabled(false);
             readChipBtn.setEnabled(false);
             disconnectBtn.setEnabled(false);
@@ -311,5 +352,17 @@ public class MainApp {
         frame.add(topArea, BorderLayout.NORTH);
         frame.add(tabs, BorderLayout.CENTER);
         frame.setVisible(true);
+    }
+
+    private static final class ConnectOutcome {
+        final boolean connected;
+        final CardGateway.CardGatewayResult pinResult;
+        final String errorMessage;
+
+        ConnectOutcome(boolean connected, CardGateway.CardGatewayResult pinResult, String errorMessage) {
+            this.connected = connected;
+            this.pinResult = pinResult;
+            this.errorMessage = errorMessage;
+        }
     }
 }

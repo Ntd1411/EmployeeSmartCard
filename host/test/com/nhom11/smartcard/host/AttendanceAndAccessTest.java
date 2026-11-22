@@ -29,6 +29,8 @@ import com.nhom11.smartcard.host.service.AttendanceStatisticsService;
 import com.nhom11.smartcard.host.service.PunchResult;
 import com.nhom11.smartcard.host.service.ShiftPairingService;
 import java.math.BigDecimal;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -76,6 +78,7 @@ public class AttendanceAndAccessTest {
         runTest("TC-GW-02", AttendanceAndAccessTest::tcGateway02SwitchableDelegate);
         runTest("TC-GW-03", AttendanceAndAccessTest::tcGateway03ApduCodecAndRedaction);
         runTest("TC-GW-04", AttendanceAndAccessTest::tcGateway04SocketProviderLoading);
+        runTest("TC-GW-05", AttendanceAndAccessTest::tcGateway05ConnectTimeoutOnBusySimulator);
         runTest("TC-12-07", AttendanceAndAccessTest::tc1207GatewayStatusWordMapping);
 
         System.out.println("Summary: " + passed + " passed, " + failed + " failed.");
@@ -514,6 +517,39 @@ public class AttendanceAndAccessTest {
         TerminalFactory factory = ApduSimulatorCardGateway.createSocketTerminalFactory(
                 "127.0.0.1", 9025, jarOpt.get());
         assertTrue(factory != null, "Socket TerminalFactory should initialize on Eclipse JRE");
+    }
+
+    private static void tcGateway05ConnectTimeoutOnBusySimulator() throws Exception {
+        try (ServerSocket silentServer = new ServerSocket(0)) {
+            int port = silentServer.getLocalPort();
+            Thread acceptThread = new Thread(() -> {
+                try (Socket client = silentServer.accept()) {
+                    Thread.sleep(5000L);
+                } catch (Exception ignored) {
+                    // Server socket closes after timeout check.
+                }
+            });
+            acceptThread.setDaemon(true);
+            acceptThread.start();
+
+            ApduSimulatorCardGateway gateway = new ApduSimulatorCardGateway();
+            long startMs = System.currentTimeMillis();
+            IllegalStateException timeoutEx = null;
+            try {
+                gateway.connect("127.0.0.1", port, 600L);
+            } catch (IllegalStateException ex) {
+                timeoutEx = ex;
+            } finally {
+                gateway.disconnect();
+            }
+            long elapsedMs = System.currentTimeMillis() - startMs;
+
+            assertTrue(timeoutEx != null, "Silent busy simulator must fail with timeout IllegalStateException");
+            assertTrue(elapsedMs < 3500L, "Connect timeout must return promptly instead of hanging; elapsed=" + elapsedMs);
+            assertTrue(timeoutEx.getMessage().contains("disconnect;"),
+                    "Timeout message should instruct running disconnect; in APDU Console");
+            assertTrue(!gateway.isConnected(), "Gateway must stay disconnected after timeout");
+        }
     }
 
     private static void tc1207GatewayStatusWordMapping() {

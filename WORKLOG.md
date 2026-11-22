@@ -26,8 +26,9 @@
 | Antigravity | Triển khai Applet APDU chấm công/kiểm soát ra vào và dự án Host Eclipse cho `US10`–`US13` | ✅ Done | Cập nhật `EmployeeCardApplet.java` (lệnh `0x20`/`0x30`/`0x32`/`0x34`/`0x40`/`0x42`/`0x50`) và xây dựng project `host/` (`EmployeeSmartCardHost`) với model, provider, repository, service, Swing UI và `AttendanceAndAccessTest` | 1h |
 | Antigravity | Chuẩn hóa cấu hình biên dịch Java 17 và file `.launch` cho Eclipse trên `host/` | ✅ Done | Thêm `host/.settings/org.eclipse.jdt.core.prefs` (`--release 17`), `Run_Host_App_US10_US13.launch`, `Run_Tests_US10_US13.launch` và kiểm tra chạy 21/21 test trên JRE 25 của Eclipse | 15m |
 | Antigravity | Nối App Host trực tiếp tới Simulator `jcsl` qua APDU và mở rộng kiểm thử | ✅ Done | Thêm `ApduSimulatorCardGateway`, `SwitchableCardGateway`, thanh kết nối `jcsl` trên `MainApp`/`AccessSimulationPanel`; chạy 25/25 test đạt trên JRE 25 | 30m |
+| Antigravity | Xử lý lỗi đơ giao diện khi `jcsl` đang bận giữ kết nối từ APDU Console | ✅ Done | Thêm timeout có thể ngắt trong `ApduSimulatorCardGateway.connect`, chạy kết nối qua `SwingWorker` ở `MainApp`, thêm test `TC-GW-05` (26/26 pass) | 15m |
 
-**Tổng kết ngày:** Đã hoàn thiện tài liệu phân công Nhóm 11, kế hoạch triển khai, Applet + ứng dụng Host kết nối trực tiếp Java Card Simulator (`jcsl`) cho `US10`–`US13`, đạt 25/25 test tự động trên JRE 25 của Eclipse.
+**Tổng kết ngày:** Đã hoàn thiện tài liệu phân công Nhóm 11, kế hoạch triển khai, Applet + ứng dụng Host kết nối trực tiếp Java Card Simulator (`jcsl`) không chặn giao diện cho `US10`–`US13`, đạt 26/26 test tự động trên JRE 25 của Eclipse.
 
 ---
 
