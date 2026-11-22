@@ -12,7 +12,7 @@ public final class PhotoTransferTest {
         testRoundTrip(1);
         testRoundTrip(128);
         testRoundTrip(300);
-        testRoundTrip(4096);
+        testRoundTrip(PhotoTransfer.MAX_SIZE);
         testInvalidSize();
         testStatusStopsTransfer();
         testShortReadFails();
@@ -31,7 +31,7 @@ public final class PhotoTransferTest {
 
     private static void testInvalidSize() throws Exception {
         try {
-            PhotoTransfer.roundTrip(new FakeChannel(), new byte[4097]);
+            PhotoTransfer.roundTrip(new FakeChannel(), new byte[PhotoTransfer.MAX_SIZE + 1]);
             throw new AssertionError("Expected size rejection");
         } catch (IllegalArgumentException expected) {
             // Expected before any APDU is sent.

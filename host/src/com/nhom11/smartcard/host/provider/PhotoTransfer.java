@@ -8,7 +8,7 @@ import javax.smartcardio.ResponseAPDU;
 
 /** Experimental byte transfer only; not secure for real employee photographs. */
 public final class PhotoTransfer {
-    public static final int MAX_SIZE = 4096;
+    public static final int MAX_SIZE = 8192;
     private static final int CHUNK_SIZE = 128;
 
     private PhotoTransfer() {
@@ -22,7 +22,7 @@ public final class PhotoTransfer {
     /** Writes then reads back a dummy payload, checking every SW and response length. */
     public static boolean roundTrip(Channel channel, byte[] bytes) throws CardException {
         if (channel == null || bytes == null || bytes.length < 1 || bytes.length > MAX_SIZE) {
-            throw new IllegalArgumentException("Dữ liệu thử phải có từ 1 đến 4096 byte.");
+            throw new IllegalArgumentException("Dữ liệu thử phải có từ 1 đến 8192 byte.");
         }
         requireSuccess(channel.transmit(new CommandAPDU(0x80, 0x10, bytes.length >> 8, bytes.length & 0xff)), "BEGIN");
         for (int offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {

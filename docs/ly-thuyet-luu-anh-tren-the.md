@@ -11,7 +11,7 @@ File ảnh thử → Host: đọc byte → APDU theo đoạn → Applet: lưu by
 File kết quả ← Host: ghép byte ← APDU theo đoạn ← Applet: đọc byte
 ```
 
-Host của nhóm đã có giao diện và kết nối simulator cho chấm công/kiểm soát ra vào. Trên nhánh thử đã bổ sung tab gửi một file giả và đọc lại để so sánh. Theo ảnh người dùng, thử nghiệm qua host và simulator một thẻ đã đọc lại đúng 3172 byte từ một file PNG giả.
+Host của nhóm đã có giao diện và kết nối simulator cho chấm công/kiểm soát ra vào. Trên nhánh thử đã bổ sung tab gửi một file giả và đọc lại để so sánh. Theo ảnh người dùng, thử nghiệm qua host và simulator một thẻ đã đọc lại đúng 3172 và 4096 byte từ file PNG giả; host cũ từ chối file 4097 byte.
 
 ## 2. Vì sao cần chia đoạn?
 
@@ -25,12 +25,12 @@ Các lệnh dưới đây dùng CLA `80`. `Lc` là số byte dữ liệu gửi v
 
 | INS | P1/P2 | Dữ liệu | Ý nghĩa |
 |---|---|---|---|
-| `10` BEGIN | Tổng độ dài | Không | Bắt đầu một lần ghi, tối đa 4096 byte trong bản thử |
+| `10` BEGIN | Tổng độ dài | Không | Bắt đầu một lần ghi, tối đa 8192 byte trong code thử mới |
 | `11` WRITE | Offset tiếp theo | `Lc` byte | Ghi nối tiếp vào bộ đệm |
 | `12` FINISH | `0000` | Không | Cho phép đọc nếu đã nhận đủ số byte |
 | `13` READ | Offset | Không; `Le` là số byte muốn đọc | Đọc từ vị trí yêu cầu, tối đa 128 byte mỗi lệnh |
 
-Bản thử cấp phát bộ đệm 4096 byte cho **mỗi instance** lúc cài đặt. Năm instance cần khoảng 20 KiB chỉ cho các bộ đệm này, chưa tính phần còn lại. Đây không phải kết luận về dung lượng thẻ thật hoặc việc năm instance chắc chắn cài thành công.
+Code thử mới cấp phát bộ đệm 8192 byte cho **mỗi instance** lúc cài đặt; năm instance cần khoảng 40 KiB chỉ cho các bộ đệm này, chưa tính phần còn lại. Code 8192 byte chưa được build hoặc thử trên simulator. Đây không phải kết luận về dung lượng thẻ thật hoặc việc năm instance chắc chắn cài thành công.
 
 ### Ví dụ 8 byte
 
@@ -64,7 +64,7 @@ Các dòng warning kèm `ISOException` có thể là cách simulator hiển th�
 1. Tạo `PhotoSpikeApplet` độc lập và thử bằng `PhotoCardSpike`. Theo log người dùng, lệnh ghi hai đoạn và đọc lại `ABCDEFGH` thành công; các phép đọc `ABCD`, `EFGH`, `CD` theo offset và độ dài cũng thành công. Đây là dữ liệu giả, không phải ảnh.
 2. Tạo nhánh `feat/photo-card` từ main đã cập nhật. Chuyển ý tưởng giao thức vào `EmployeeCardApplet` hiện có, thêm kiểm tra PIN và trạng thái ACTIVE.
 3. Theo log Eclipse/simulator, CAP thử đã được Load/Install/Select. READ trước PIN trả `6982`; sau xác thực PIN thử, BEGIN, hai WRITE, FINISH và READ đều trả `9000`, đọc đúng `ABCDEFGH`.
-4. Host kết nối tới simulator ở chế độ một thẻ và xác thực PIN thử theo ảnh người dùng. Test kênh APDU giả có 7 kiểm tra đạt. Sau đó, người dùng thử tab mới với file PNG giả 3172 byte; giao diện báo “Thành công: đọc lại đúng 3172 byte.” Host so sánh byte trong bộ nhớ, không hiển thị hay xuất lại ảnh.
+4. Host kết nối tới simulator ở chế độ một thẻ và xác thực PIN thử theo ảnh người dùng. Test kênh APDU giả có 7 kiểm tra đạt. Sau đó, người dùng thử tab mới với file PNG giả 3172 byte; giao diện báo “Thành công: đọc lại đúng 3172 byte.” Với giới hạn cũ 4096 byte, ảnh 4096 byte cũng đọc lại đúng và file 4097 byte bị host từ chối. Host so sánh byte trong bộ nhớ, không hiển thị hay xuất lại ảnh.
 5. Những thử nghiệm trên **không** chứng minh tất cả biên, lỗi, tính năng cũ, nhiều instance hoặc ảnh thật hoạt động; chúng chưa được kiểm thử đầy đủ.
 
 `spikes/photo-card/` là bài thử độc lập và tài liệu cục bộ để đối chiếu; không bắt buộc đưa vào main. File EEPROM là trạng thái mô phỏng, không phải file ảnh. Các file EEPROM thử nghiệm được bỏ qua trong `.gitignore`; không nên chia sẻ file đó nếu có dữ liệu nhạy cảm.
@@ -82,6 +82,6 @@ Chú ý input và output là hai đường dẫn cấu hình riêng. Nếu muố
 - PIN chỉ là một kiểm tra truy cập trong bài thử; ảnh chưa được mã hóa khi lưu hoặc truyền, chưa có xác thực mật mã. Không đủ an toàn cho dữ liệu cá nhân.
 - BEGIN làm dữ liệu cũ không còn đọc được, ngay cả khi lần ghi mới thất bại. Chưa có cơ chế bảo toàn ảnh cũ, xử lý mất điện hoặc khôi phục dữ liệu được kiểm chứng.
 - Cần thử offset sai, dữ liệu thiếu/thừa, giới hạn, lệnh khi chưa xác thực và sau deselect, các trạng thái thẻ, khởi động lại applet chung, và hồi quy chấm công/kiểm soát ra vào.
-- Cần kiểm tra tổng bộ nhớ với nhiều instance; không giả định bộ đệm 4096 byte là phù hợp với thẻ thật.
-- Tab host thử nghiệm chọn file giả 1–4096 byte, xác nhận trước khi ghi, gửi và đọc lại theo đoạn, kiểm tra SW và so sánh byte trên luồng nền. Nó chỉ cho phép chế độ một instance. Một file PNG giả 3172 byte đã được thử thành công trên simulator; vẫn cần kiểm thử thêm các tình huống lỗi, thao tác đồng thời, xác thực lại và trải nghiệm giao diện.
+- Cần kiểm tra tổng bộ nhớ với nhiều instance; không giả định bộ đệm 8192 byte là phù hợp với thẻ thật.
+- Code host mới cho phép chọn file giả 1–8192 byte, xác nhận trước khi ghi, gửi và đọc lại theo đoạn, kiểm tra SW và so sánh byte trên luồng nền. Nó chỉ cho phép chế độ một instance. Các file 3172 và 4096 byte đã thử thành công trên phiên bản cũ; bản 8192 byte chưa thử trên simulator. Cần thử thêm tình huống lỗi, thao tác đồng thời, xác thực lại và trải nghiệm giao diện.
 - Trước khi merge hay dùng dữ liệu thật: thống nhất với nhóm về phân quyền, mã hóa lưu trữ, bảo vệ kênh truyền, dữ liệu nhạy cảm, khôi phục sau lỗi và thử nghiệm trên phần cứng đích.
