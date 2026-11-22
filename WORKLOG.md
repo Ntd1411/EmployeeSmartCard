@@ -22,8 +22,9 @@
 | Member | Task | Status | Output | Time |
 |--------|------|--------|--------|------|
 | Antigravity | Tạo tài liệu phân công công việc Nhóm 11 trong `docs/` | ✅ Done | Đã tạo `docs/phan-cong-cong-viec.md` (13 US, 53 SP, lịch trình 14 ngày và kế hoạch báo cáo Word) từ file phân công | < 10m |
+| Antigravity | Tạo nhánh phát triển, commit tài liệu phân công và lập kế hoạch triển khai `US10`–`US13` | ✅ Done | Tạo nhánh `feat/attendance-access-control`, commit `docs/phan-cong-cong-viec.md` và `WORKLOG.md`; tạo kế hoạch chi tiết tại `docs/dung-plan.md` | < 15m |
 
-**Tổng kết ngày:** Đã hoàn thiện tài liệu phân công chi tiết cho 4 thành viên Nhóm 11 tại `docs/phan-cong-cong-viec.md`.
+**Tổng kết ngày:** Đã hoàn thiện tài liệu phân công Nhóm 11 tại `docs/phan-cong-cong-viec.md`, tạo nhánh `feat/attendance-access-control`, commit tài liệu phân công và lập kế hoạch triển khai chi tiết `US10`–`US13` tại `docs/dung-plan.md`.
 
 ---
 
