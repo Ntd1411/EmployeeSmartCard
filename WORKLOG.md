@@ -4,6 +4,16 @@
 
 ---
 
+## [2026-11-20]
+
+| Member | Task | Status | Output | Time |
+|--------|------|--------|--------|------|
+| Notion AI | Ghi nhận thử nghiệm lưu dữ liệu ảnh và bảo vệ file EEPROM mô phỏng | 🔄 WIP | Cập nhật README thử nghiệm theo log người dùng: ghi/đọc 8 byte, đọc theo offset và nạp lại EEPROM sau khi khởi động simulator; bỏ qua file EEPROM thử nghiệm trong Git. Chưa thử file ảnh hoặc thẻ thật. | — |
+| Notion AI | Thử tích hợp giao thức byte ảnh vào applet hiện có trên nhánh riêng | 🔄 WIP | Bổ sung BEGIN/WRITE/FINISH/READ có kiểm tra PIN và trạng thái. Theo log người dùng, simulator từ chối READ trước PIN và ghi/đọc 8 byte sau PIN thành công. Chưa kiểm thử hồi quy, file ảnh hay host; xem `docs/photo-card-experiment.md`. | — |
+| Notion AI | Viết tài liệu lý thuyết lưu ảnh thử nghiệm | ✅ Done | Giải thích APDU, cách chia đoạn, kết quả simulator, EEPROM, giới hạn bảo mật và các bước còn lại tại `docs/ly-thuyet-luu-anh-tren-the.md`. | — |
+
+---
+
 ## [2026-11-13]
 
 | Member | Task | Status | Output | Time |

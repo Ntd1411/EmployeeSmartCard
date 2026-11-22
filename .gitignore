@@ -6,6 +6,9 @@
 /host/data/
 *.class
 
+# Local simulator state (may contain sensitive card data)
+/spikes/photo-card/simulator-eeprom*.bin
+
 # Eclipse local state
 /.metadata/
 
