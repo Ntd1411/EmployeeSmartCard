@@ -68,7 +68,7 @@ public class MainApp {
         InMemoryVirtualCardProvider cardProvider = new InMemoryVirtualCardProvider();
         InMemoryAccessPolicyProvider policyProvider = new InMemoryAccessPolicyProvider();
         VirtualStoreCardGateway virtualGateway = new VirtualStoreCardGateway(cardProvider);
-        ApduSimulatorCardGateway apduGateway = new ApduSimulatorCardGateway();
+        ApduSimulatorCardGateway apduGateway = new ApduSimulatorCardGateway(cardProvider);
         SwitchableCardGateway switchableGateway = new SwitchableCardGateway(virtualGateway);
 
         FileAttendanceRepository attendanceRepo = new FileAttendanceRepository(
@@ -171,6 +171,7 @@ public class MainApp {
         JTextField portField = new JTextField("9025", 5);
         JPasswordField pinField = new JPasswordField("1234", 7);
 
+        JButton deployBtn = new JButton("Cài 5 thẻ lên jcsl");
         JButton connectBtn = new JButton("Kết nối jcsl");
         JButton verifyPinBtn = new JButton("Verify PIN");
         JButton readChipBtn = new JButton("Đọc trạng thái jcsl");
@@ -178,6 +179,108 @@ public class MainApp {
         verifyPinBtn.setEnabled(false);
         readChipBtn.setEnabled(false);
         disconnectBtn.setEnabled(false);
+
+        JTabbedPane tabs = new JTabbedPane();
+
+        java.util.function.Supplier<String> resolveFocusedCardId = () -> {
+            int idx = tabs.getSelectedIndex();
+            String selected = null;
+            if (idx == 0) {
+                selected = attendancePanel.getSelectedCardId();
+            } else if (idx == 3) {
+                selected = accessPanel.getSelectedCardId();
+            }
+            return selected != null ? selected : "CARD-001";
+        };
+
+        deployBtn.addActionListener(e -> {
+            String host = hostField.getText().trim();
+            int port;
+            try {
+                port = Integer.parseInt(portField.getText().trim());
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(frame, "Cổng port không hợp lệ.", "Lỗi cài 5 thẻ jcsl",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            char[] pinChars = pinField.getPassword();
+            deployBtn.setEnabled(false);
+            connectBtn.setEnabled(false);
+            hostField.setEnabled(false);
+            portField.setEnabled(false);
+            pinField.setEnabled(false);
+            verifyPinBtn.setEnabled(false);
+            readChipBtn.setEnabled(false);
+            disconnectBtn.setEnabled(false);
+            modeBadge.setText("Đang cài 5 thẻ lên jcsl...");
+            modeBadge.setForeground(UiTheme.COLOR_NEUTRAL_FG);
+
+            new SwingWorker<DeployOutcome, Void>() {
+                @Override
+                protected DeployOutcome doInBackground() {
+                    try {
+                        int count = apduGateway.deployMultiCards(
+                                host,
+                                port,
+                                ApduSimulatorCardGateway.DEFAULT_DEPLOY_TIMEOUT_MS,
+                                cardProvider.findAll(),
+                                pinChars);
+                        return new DeployOutcome(true, count, null);
+                    } catch (Exception ex) {
+                        return new DeployOutcome(false, 0, ex.getMessage());
+                    } finally {
+                        Arrays.fill(pinChars, '\0');
+                    }
+                }
+
+                @Override
+                protected void done() {
+                    DeployOutcome outcome;
+                    try {
+                        outcome = get();
+                    } catch (Exception ex) {
+                        outcome = new DeployOutcome(false, 0, ex.getMessage());
+                    }
+                    pinField.setEnabled(true);
+                    if (outcome.deployed) {
+                        switchableGateway.useDelegate(apduGateway);
+                        deployBtn.setEnabled(true);
+                        connectBtn.setEnabled(false);
+                        hostField.setEnabled(false);
+                        portField.setEnabled(false);
+                        verifyPinBtn.setEnabled(true);
+                        readChipBtn.setEnabled(true);
+                        disconnectBtn.setEnabled(true);
+                        modeBadge.setText("Chế độ: Simulator jcsl — Nhiều thẻ (" + host + ":" + port + ")");
+                        modeBadge.setForeground(UiTheme.COLOR_ALLOW_FG);
+                        updateSimulatorTrace.run();
+                        JOptionPane.showMessageDialog(frame,
+                                "Đã nạp và cài đặt thành công " + outcome.count + " thẻ độc lập trên jcsl:\n"
+                                        + "- CARD-001 -> AID 112233445501 (ACTIVE)\n"
+                                        + "- CARD-002 -> AID 112233445502 (ACTIVE)\n"
+                                        + "- CARD-003 -> AID 112233445503 (LOCKED)\n"
+                                        + "- CARD-004 -> AID 112233445504 (ACTIVE, chưa Verify PIN)\n"
+                                        + "- CARD-005 -> AID 112233445505 (REVOKED)",
+                                "Cài 5 thẻ lên jcsl thành công",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        switchableGateway.useDelegate(virtualGateway);
+                        deployBtn.setEnabled(true);
+                        connectBtn.setEnabled(true);
+                        hostField.setEnabled(true);
+                        portField.setEnabled(true);
+                        verifyPinBtn.setEnabled(false);
+                        readChipBtn.setEnabled(false);
+                        disconnectBtn.setEnabled(false);
+                        modeBadge.setText("Chế độ: Thẻ ảo nội bộ");
+                        modeBadge.setForeground(UiTheme.COLOR_NEUTRAL_FG);
+                        updateSimulatorTrace.run();
+                        JOptionPane.showMessageDialog(frame, outcome.errorMessage,
+                                "Không cài được 5 thẻ lên jcsl", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
+        });
 
         connectBtn.addActionListener(e -> {
             String host = hostField.getText().trim();
@@ -190,6 +293,7 @@ public class MainApp {
                 return;
             }
             char[] pinChars = pinField.getPassword();
+            deployBtn.setEnabled(false);
             connectBtn.setEnabled(false);
             hostField.setEnabled(false);
             portField.setEnabled(false);
@@ -226,6 +330,7 @@ public class MainApp {
                         outcome = new ConnectOutcome(false, null, ex.getMessage());
                     }
                     pinField.setEnabled(true);
+                    deployBtn.setEnabled(true);
                     if (outcome.connected) {
                         switchableGateway.useDelegate(apduGateway);
                         connectBtn.setEnabled(false);
@@ -234,7 +339,8 @@ public class MainApp {
                         verifyPinBtn.setEnabled(true);
                         readChipBtn.setEnabled(true);
                         disconnectBtn.setEnabled(true);
-                        modeBadge.setText("Chế độ: Simulator jcsl (" + host + ":" + port + ")");
+                        String modeSuffix = apduGateway.isMultiCardMode() ? "Nhiều thẻ" : "1 thẻ";
+                        modeBadge.setText("Chế độ: Simulator jcsl — " + modeSuffix + " (" + host + ":" + port + ")");
                         modeBadge.setForeground(UiTheme.COLOR_ALLOW_FG);
                         updateSimulatorTrace.run();
                         if (outcome.pinResult != null && !outcome.pinResult.isSuccess()) {
@@ -264,11 +370,17 @@ public class MainApp {
         });
 
         verifyPinBtn.addActionListener(e -> {
+            String targetCardId = resolveFocusedCardId.get();
             char[] pinChars = pinField.getPassword();
             try {
-                CardGateway.CardGatewayResult res = apduGateway.verifyPin(pinChars);
+                CardGateway.CardGatewayResult res = apduGateway.verifyPin(targetCardId, pinChars);
+                if (res.isSuccess()) {
+                    cardProvider.findByCardId(targetCardId).ifPresent(vc -> vc.setPinVerified(true));
+                    refreshAllTabs.run();
+                }
                 updateSimulatorTrace.run();
-                JOptionPane.showMessageDialog(frame, res.getMessage(),
+                JOptionPane.showMessageDialog(frame,
+                        "Thẻ: " + targetCardId + " (AID " + apduGateway.getActiveAidHex() + ")\n" + res.getMessage(),
                         res.isSuccess() ? "Verify PIN thành công" : "Verify PIN thất bại",
                         res.isSuccess() ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
             } finally {
@@ -277,11 +389,14 @@ public class MainApp {
         });
 
         readChipBtn.addActionListener(e -> {
+            String targetCardId = resolveFocusedCardId.get();
             try {
-                ApduSimulatorCardGateway.CardChipStatus status = apduGateway.readCardStatus();
-                ApduSimulatorCardGateway.LastCardAttendance last = apduGateway.readLastAttendance();
+                ApduSimulatorCardGateway.CardChipStatus status = apduGateway.readCardStatus(targetCardId);
+                ApduSimulatorCardGateway.LastCardAttendance last = apduGateway.readLastAttendance(targetCardId);
                 updateSimulatorTrace.run();
-                String msg = "Trạng thái thẻ: " + status.getStatus()
+                String msg = "Thẻ đang chọn: " + targetCardId + " (AID " + apduGateway.getActiveAidHex() + ")"
+                        + "\nChế độ nhiều thẻ: " + (apduGateway.isMultiCardMode() ? "Bật" : "Tắt (1 thẻ)")
+                        + "\nTrạng thái thẻ: " + status.getStatus()
                         + "\nPIN đã xác thực: " + (status.isPinValidated() ? "Có" : "Chưa")
                         + "\nTổng lượt quẹt trên chip: " + status.getPunchCounter()
                         + "\nTrạng thái ca trên chip: " + (status.isShiftOpen() ? "Đang mở (CHECK_IN)" : "Đang đóng")
@@ -301,6 +416,7 @@ public class MainApp {
         disconnectBtn.addActionListener(e -> {
             apduGateway.disconnect();
             switchableGateway.useDelegate(virtualGateway);
+            deployBtn.setEnabled(true);
             connectBtn.setEnabled(true);
             hostField.setEnabled(true);
             portField.setEnabled(true);
@@ -320,6 +436,7 @@ public class MainApp {
         row2.add(portField);
         row2.add(new JLabel("PIN thẻ:"));
         row2.add(pinField);
+        row2.add(deployBtn);
         row2.add(connectBtn);
         row2.add(verifyPinBtn);
         row2.add(readChipBtn);
@@ -332,7 +449,6 @@ public class MainApp {
         topArea.add(topRows, BorderLayout.CENTER);
         topArea.add(apduTraceLabel, BorderLayout.SOUTH);
 
-        JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("US10 · Chấm công", attendancePanel);
         tabs.addTab("US11 · Tính giờ làm", shiftPanel);
         tabs.addTab("US13 · Thống kê", statsPanel);
@@ -353,6 +469,18 @@ public class MainApp {
         frame.add(topArea, BorderLayout.NORTH);
         frame.add(tabs, BorderLayout.CENTER);
         frame.setVisible(true);
+    }
+
+    private static final class DeployOutcome {
+        final boolean deployed;
+        final int count;
+        final String errorMessage;
+
+        DeployOutcome(boolean deployed, int count, String errorMessage) {
+            this.deployed = deployed;
+            this.count = count;
+            this.errorMessage = errorMessage;
+        }
     }
 
     private static final class ConnectOutcome {

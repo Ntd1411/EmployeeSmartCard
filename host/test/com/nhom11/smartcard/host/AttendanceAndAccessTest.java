@@ -80,6 +80,7 @@ public class AttendanceAndAccessTest {
         runTest("TC-GW-03", AttendanceAndAccessTest::tcGateway03ApduCodecAndRedaction);
         runTest("TC-GW-04", AttendanceAndAccessTest::tcGateway04SocketProviderLoading);
         runTest("TC-GW-05", AttendanceAndAccessTest::tcGateway05ConnectTimeoutOnBusySimulator);
+        runTest("TC-GW-06", AttendanceAndAccessTest::tcGateway06MultiCardAidAndToolDetection);
         runTest("TC-12-07", AttendanceAndAccessTest::tc1207GatewayStatusWordMapping);
 
         System.out.println("Summary: " + passed + " passed, " + failed + " failed.");
@@ -584,6 +585,25 @@ public class AttendanceAndAccessTest {
                     "Timeout message should instruct running disconnect; in APDU Console");
             assertTrue(!gateway.isConnected(), "Gateway must stay disconnected after timeout");
         }
+    }
+
+    private static void tcGateway06MultiCardAidAndToolDetection() {
+        assertEquals("112233445501",
+                ApduSimulatorCardGateway.formatAidHex(ApduSimulatorCardGateway.resolveAppletAid("CARD-001")),
+                "CARD-001 resolves to instance AID 112233445501");
+        assertEquals("112233445505",
+                ApduSimulatorCardGateway.formatAidHex(ApduSimulatorCardGateway.resolveAppletAid("CARD-005")),
+                "CARD-005 resolves to instance AID 112233445505");
+        assertEquals("1122334455",
+                ApduSimulatorCardGateway.formatAidHex(ApduSimulatorCardGateway.resolveAppletAid("OTHER")),
+                "Non-standard card ID falls back to base APPLET_AID");
+
+        assertTrue(ApduSimulatorCardGateway.detectAmServiceJar().isPresent(),
+                "amservice.jar should be detected on workstation");
+        assertTrue(ApduSimulatorCardGateway.detectClientConfigProperties().isPresent(),
+                "client.config.properties should be detected on workstation");
+        assertTrue(ApduSimulatorCardGateway.detectCapFile().isPresent(),
+                "smartcard.cap should be detected on workstation");
     }
 
     private static void tc1207GatewayStatusWordMapping() {

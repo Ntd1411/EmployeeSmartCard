@@ -204,6 +204,11 @@ public class AttendancePanel extends JPanel {
         onGatewayActivity.run();
     }
 
+    public String getSelectedCardId() {
+        Object selected = cardCombo.getSelectedItem();
+        return selected instanceof CardOption ? ((CardOption) selected).cardId : null;
+    }
+
     public final void refreshData() {
         String prevCardId = cardCombo.getSelectedItem() instanceof CardOption
                 ? ((CardOption) cardCombo.getSelectedItem()).cardId

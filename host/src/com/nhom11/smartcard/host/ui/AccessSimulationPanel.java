@@ -236,7 +236,7 @@ public class AccessSimulationPanel extends JPanel {
         onCardStateChanged.run();
 
         if (simulatorGateway != null && simulatorGateway.isConnected()) {
-            CardGateway.CardGatewayResult simRes = simulatorGateway.setCardStatus(targetStatus);
+            CardGateway.CardGatewayResult simRes = simulatorGateway.setCardStatus(card.getCardId(), targetStatus);
             onGatewayActivity.run();
             UiTheme.setBanner(decisionBanner, simRes.isSuccess(),
                     "Đã cập nhật " + card.getCardId() + " (" + targetStatus + ") | jcsl: "
@@ -274,6 +274,11 @@ public class AccessSimulationPanel extends JPanel {
                 prefix + " — [" + log.getReasonCode().name() + "] " + log.getReasonDetail());
         refreshLogs();
         onGatewayActivity.run();
+    }
+
+    public String getSelectedCardId() {
+        Object selected = cardCombo.getSelectedItem();
+        return selected instanceof SelectOption ? ((SelectOption) selected).id : null;
     }
 
     public final void refreshData() {

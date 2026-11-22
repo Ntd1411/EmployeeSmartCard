@@ -28,8 +28,9 @@
 | Antigravity | Nối App Host trực tiếp tới Simulator `jcsl` qua APDU và mở rộng kiểm thử | ✅ Done | Thêm `ApduSimulatorCardGateway`, `SwitchableCardGateway`, thanh kết nối `jcsl` trên `MainApp`/`AccessSimulationPanel`; chạy 25/25 test đạt trên JRE 25 | 30m |
 | Antigravity | Xử lý lỗi đơ giao diện khi `jcsl` đang bận giữ kết nối từ APDU Console | ✅ Done | Thêm timeout có thể ngắt trong `ApduSimulatorCardGateway.connect`, chạy kết nối qua `SwingWorker` ở `MainApp`, thêm test `TC-GW-05` (26/26 pass) | 15m |
 | Antigravity | Sửa lỗi lệch trạng thái chấm công khi cùng giây, đồng bộ ca khi khởi động lại và tự lấy giờ hiện tại trên UI | ✅ Done | Giữ đúng thứ tự chèn theo thời gian ở `AttendanceService`/`ShiftPairingService`, bổ sung `syncFromRecords` trong `VirtualStoreCardGateway`/`MainApp`, bật tự cập nhật giờ ở `AttendancePanel`, thêm test `TC-10-05` (27/27 pass) | 15m |
+| Antigravity | Hỗ trợ mô phỏng 5 thẻ độc lập theo AID riêng và cài đặt 1-click lên Simulator `jcsl` | ✅ Done | Nâng cấp `ApduSimulatorCardGateway` với ánh xạ AID `112233445501`..`112233445505`, `deployMultiCards` qua `AMService`, nút `Cài 5 thẻ lên jcsl` ở `MainApp`, kiểm thử `TC-GW-06` (28/28 pass) và kiểm tra thực tế trên `jcsl` | 30m |
 
-**Tổng kết ngày:** Đã hoàn thiện tài liệu phân công Nhóm 11, kế hoạch triển khai, Applet + ứng dụng Host kết nối trực tiếp Java Card Simulator (`jcsl`) ổn định cho `US10`–`US13`, đạt 27/27 test tự động trên JRE 25 của Eclipse.
+**Tổng kết ngày:** Đã hoàn thiện tài liệu phân công Nhóm 11, kế hoạch triển khai, Applet + ứng dụng Host kết nối và mô phỏng 5 thẻ độc lập trên Java Card Simulator (`jcsl`) cho `US10`–`US13`, đạt 28/28 test tự động trên JRE 25 của Eclipse.
 
 ---
 
