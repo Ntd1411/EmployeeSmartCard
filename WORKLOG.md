@@ -17,6 +17,16 @@
 
 ---
 
+## [2026-11-22]
+
+| Member | Task | Status | Output | Time |
+|--------|------|--------|--------|------|
+| Antigravity | Tạo tài liệu phân công công việc Nhóm 11 trong `docs/` | ✅ Done | Đã tạo `docs/phan-cong-cong-viec.md` (13 US, 53 SP, lịch trình 14 ngày và kế hoạch báo cáo Word) từ file phân công | < 10m |
+
+**Tổng kết ngày:** Đã hoàn thiện tài liệu phân công chi tiết cho 4 thành viên Nhóm 11 tại `docs/phan-cong-cong-viec.md`.
+
+---
+
 ## [YYYY-MM-DD]
 
 | Member | Task | Status | Output | Time |
