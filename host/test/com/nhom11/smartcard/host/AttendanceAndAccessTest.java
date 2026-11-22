@@ -54,6 +54,7 @@ public class AttendanceAndAccessTest {
         runTest("TC-10-02", AttendanceAndAccessTest::tc1002LockedOrRevokedCardRejected);
         runTest("TC-10-03", AttendanceAndAccessTest::tc1003DoubleTapDebounced);
         runTest("TC-10-04", AttendanceAndAccessTest::tc1004UnknownCardRejected);
+        runTest("TC-10-05", AttendanceAndAccessTest::tc1005SameTimestampAlternatingAndRestartSync);
 
         runTest("TC-11-01", AttendanceAndAccessTest::tc1101StandardDayShift);
         runTest("TC-11-02", AttendanceAndAccessTest::tc1102OvernightShift);
@@ -169,6 +170,39 @@ public class AttendanceAndAccessTest {
                 "CARD-MISSING", AttendanceEventType.CHECK_IN, LocalDateTime.of(2026, 11, 20, 8, 0), true, false);
         assertTrue(!res.isAccepted(), "Unknown card must be rejected");
         assertEquals(0, f.attRepo.findAll().size(), "No record saved");
+    }
+
+    private static void tc1005SameTimestampAlternatingAndRestartSync() {
+        TestFixture f = createFixture();
+        LocalDateTime sameSecond = LocalDateTime.of(2026, 11, 22, 11, 50, 2);
+
+        PunchResult p1 = f.attService.punch("C-ACT", AttendanceEventType.CHECK_IN, sameSecond, true, false);
+        PunchResult p2 = f.attService.punch("C-ACT", AttendanceEventType.CHECK_OUT, sameSecond, true, false);
+        PunchResult p3 = f.attService.punch("C-ACT", AttendanceEventType.CHECK_IN, sameSecond, true, false);
+        PunchResult p4 = f.attService.punch("C-ACT", AttendanceEventType.CHECK_OUT, sameSecond, true, false);
+
+        assertTrue(p1.isAccepted(), "1st CHECK_IN at same second succeeds");
+        assertTrue(p2.isAccepted(), "2nd CHECK_OUT at same second succeeds");
+        assertTrue(p3.isAccepted(), "3rd CHECK_IN at same second succeeds (not blocked by UUID ordering)");
+        assertTrue(p4.isAccepted(), "4th CHECK_OUT at same second succeeds");
+
+        // Verify ShiftPairingService preserves insertion order across equal-timestamp pairs.
+        List<WorkShift> shifts = f.shiftService.calculateShifts(
+                "E1", LocalDate.of(2026, 11, 22), LocalDate.of(2026, 11, 22));
+        assertEquals(2, shifts.size(), "Two paired shifts expected");
+
+        // Simulate app restart with open shift left on C-ACT.
+        PunchResult p5 = f.attService.punch(
+                "C-ACT", AttendanceEventType.CHECK_IN, sameSecond.plusMinutes(2), true, false);
+        assertTrue(p5.isAccepted(), "5th CHECK_IN opens shift");
+
+        VirtualStoreCardGateway restartedGateway = new VirtualStoreCardGateway(f.cards);
+        restartedGateway.syncFromRecords(f.attRepo.findAll());
+        AttendanceService restartedService = new AttendanceService(
+                f.employees, f.cards, f.attRepo, restartedGateway);
+        PunchResult p6 = restartedService.punch(
+                "C-ACT", AttendanceEventType.CHECK_OUT, sameSecond.plusMinutes(5), true, false);
+        assertTrue(p6.isAccepted(), "CHECK_OUT after restart succeeds because shift state synced from records");
     }
 
     private static void tc1101StandardDayShift() {

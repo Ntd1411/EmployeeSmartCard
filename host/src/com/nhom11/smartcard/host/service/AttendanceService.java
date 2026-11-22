@@ -12,11 +12,11 @@ import com.nhom11.smartcard.host.repository.AttendanceRepository;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Service implementing US10: shift check-in and check-out validation and persistence.
@@ -26,6 +26,7 @@ public class AttendanceService {
     private static final long DEBOUNCE_SECONDS = 60L;
     private static final int DEFAULT_ATTENDANCE_TERMINAL_AREA = 1;
     private static final DateTimeFormatter ID_TIME_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final AtomicLong RECORD_SEQ = new AtomicLong(0L);
 
     private final EmployeeProvider employeeProvider;
     private final VirtualCardProvider cardProvider;
@@ -96,8 +97,13 @@ public class AttendanceService {
         Employee employee = employeeOpt.get();
 
         List<AttendanceRecord> employeeRecords = attendanceRepository.findByEmployee(employee.getEmployeeId());
-        Optional<AttendanceRecord> latestOpt = employeeRecords.stream()
-                .max(Comparator.comparing(AttendanceRecord::getTimestamp).thenComparing(AttendanceRecord::getRecordId));
+        AttendanceRecord latestRecord = null;
+        for (AttendanceRecord r : employeeRecords) {
+            if (latestRecord == null || !r.getTimestamp().isBefore(latestRecord.getTimestamp())) {
+                latestRecord = r;
+            }
+        }
+        Optional<AttendanceRecord> latestOpt = Optional.ofNullable(latestRecord);
 
         if (latestOpt.isPresent()) {
             AttendanceRecord latest = latestOpt.get();
@@ -146,7 +152,8 @@ public class AttendanceService {
         }
 
         String suffix = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        String recordId = "ATT-" + effectiveTime.format(ID_TIME_FMT) + "-" + suffix;
+        long seq = RECORD_SEQ.incrementAndGet();
+        String recordId = "ATT-" + effectiveTime.format(ID_TIME_FMT) + "-" + String.format("%04d", seq) + "-" + suffix;
         AttendanceRecord saved = attendanceRepository.save(new AttendanceRecord(
                 recordId,
                 employee.getEmployeeId(),

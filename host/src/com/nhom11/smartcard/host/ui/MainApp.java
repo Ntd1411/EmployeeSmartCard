@@ -86,6 +86,7 @@ public class MainApp {
             MockSeedDataFactory.populateDemoData(
                     employeeProvider, cardProvider, policyProvider,
                     discardRepo, null, LocalDate.now());
+            virtualGateway.syncFromRecords(attendanceRepo.findAll());
         }
 
         AttendanceService attendanceService = new AttendanceService(

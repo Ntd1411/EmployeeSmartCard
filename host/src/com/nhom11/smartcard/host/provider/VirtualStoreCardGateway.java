@@ -1,10 +1,12 @@
 package com.nhom11.smartcard.host.provider;
 
 import com.nhom11.smartcard.host.model.AttendanceEventType;
+import com.nhom11.smartcard.host.model.AttendanceRecord;
 import com.nhom11.smartcard.host.model.CardStatus;
 import com.nhom11.smartcard.host.model.VirtualCard;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -27,6 +29,28 @@ public class VirtualStoreCardGateway implements CardGateway {
 
     public void resetAllShiftStates() {
         openShiftByCard.clear();
+    }
+
+    /**
+     * Synchronizes each card's open-shift state from persisted attendance history on startup.
+     *
+     * @param records persisted attendance records in insertion order
+     */
+    public void syncFromRecords(List<AttendanceRecord> records) {
+        openShiftByCard.clear();
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        Map<String, AttendanceRecord> latestByCard = new HashMap<>();
+        for (AttendanceRecord r : records) {
+            AttendanceRecord prev = latestByCard.get(r.getCardId());
+            if (prev == null || !r.getTimestamp().isBefore(prev.getTimestamp())) {
+                latestByCard.put(r.getCardId(), r);
+            }
+        }
+        for (Map.Entry<String, AttendanceRecord> entry : latestByCard.entrySet()) {
+            openShiftByCard.put(entry.getKey(), entry.getValue().getEventType() == AttendanceEventType.CHECK_IN);
+        }
     }
 
     @Override

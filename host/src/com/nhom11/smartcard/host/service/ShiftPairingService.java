@@ -81,8 +81,7 @@ public class ShiftPairingService {
         }
 
         Comparator<AttendanceRecord> chronological = Comparator
-                .comparing(AttendanceRecord::getTimestamp)
-                .thenComparing(AttendanceRecord::getRecordId);
+                .comparing(AttendanceRecord::getTimestamp);
 
         List<WorkShift> result = new ArrayList<>();
         for (Map.Entry<String, List<AttendanceRecord>> entry : byEmployee.entrySet()) {

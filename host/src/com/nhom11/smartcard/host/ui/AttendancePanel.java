@@ -15,7 +15,9 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -44,6 +46,7 @@ public class AttendancePanel extends JPanel {
     private final JComboBox<CardOption> cardCombo = new JComboBox<>();
     private final JLabel cardInfoLabel = new JLabel("-");
     private final JTextField timestampField = new JTextField(19);
+    private final JCheckBox useCurrentTimeCheckbox = new JCheckBox("Tự lấy giờ hiện tại", true);
     private final JCheckBox allowOrphanCheckbox = new JCheckBox("Cho phép ghi ca thiếu cặp (test US11)");
     private final JLabel statusBanner = new JLabel("Chọn thẻ ảo và nhấn Vào ca / Ra ca để chấm công.");
     private final DefaultTableModel tableModel = UiTheme.readOnlyTableModel(
@@ -117,13 +120,24 @@ public class AttendancePanel extends JPanel {
         gbc.gridx = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
-        timestampField.setText(LocalDateTime.now().format(UiTheme.DATE_TIME_FMT));
+        timestampField.setText(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).format(UiTheme.DATE_TIME_FMT));
+        timestampField.setEnabled(false);
         form.add(timestampField, gbc);
 
+        useCurrentTimeCheckbox.addActionListener(e -> {
+            boolean autoNow = useCurrentTimeCheckbox.isSelected();
+            timestampField.setEnabled(!autoNow);
+            if (autoNow) {
+                timestampField.setText(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).format(UiTheme.DATE_TIME_FMT));
+            }
+        });
+
         JButton nowButton = new JButton("Giờ hiện tại");
-        nowButton.addActionListener(e -> timestampField.setText(LocalDateTime.now().format(UiTheme.DATE_TIME_FMT)));
+        nowButton.addActionListener(e -> timestampField.setText(
+                LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).format(UiTheme.DATE_TIME_FMT)));
 
         JPanel timeTools = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        timeTools.add(useCurrentTimeCheckbox);
         timeTools.add(nowButton);
         timeTools.add(allowOrphanCheckbox);
 
@@ -165,7 +179,12 @@ public class AttendancePanel extends JPanel {
         }
         LocalDateTime ts;
         try {
-            ts = UiTheme.parseDateTime(timestampField.getText());
+            if (useCurrentTimeCheckbox.isSelected()) {
+                ts = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+                timestampField.setText(ts.format(UiTheme.DATE_TIME_FMT));
+            } else {
+                ts = UiTheme.parseDateTime(timestampField.getText());
+            }
         } catch (IllegalArgumentException ex) {
             UiTheme.setBanner(statusBanner, false, ex.getMessage());
             return;
@@ -232,6 +251,7 @@ public class AttendancePanel extends JPanel {
     private void refreshTable() {
         tableModel.setRowCount(0);
         List<AttendanceRecord> sorted = new ArrayList<>(attendanceService.listAllRecords());
+        Collections.reverse(sorted);
         sorted.sort(Comparator.comparing(AttendanceRecord::getTimestamp).reversed());
         for (AttendanceRecord r : sorted) {
             String empName = employeeProvider.findById(r.getEmployeeId())
