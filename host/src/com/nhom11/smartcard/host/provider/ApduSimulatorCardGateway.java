@@ -534,6 +534,18 @@ public class ApduSimulatorCardGateway implements CardGateway, AutoCloseable {
     }
 
     /**
+     * Runs a dummy photo round trip against the single-card simulator instance only.
+     * BEGIN replaces any previous photo; raw payloads are not added to the APDU trace.
+     */
+    public synchronized boolean verifyPhotoRoundTrip(byte[] bytes) throws CardException {
+        ensureConnected();
+        if (multiCardMode || activeAid == null || !Arrays.equals(activeAid, APPLET_AID)) {
+            throw new IllegalStateException("Bài thử chỉ hỗ trợ instance simulator đơn " + formatAidHex(APPLET_AID) + ".");
+        }
+        return PhotoTransfer.roundTrip(channel::transmit, bytes);
+    }
+
+    /**
      * Verifies PIN against the currently active applet on jcsl.
      *
      * @param pinChars cardholder PIN characters

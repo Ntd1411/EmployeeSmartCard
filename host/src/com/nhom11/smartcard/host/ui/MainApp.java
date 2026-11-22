@@ -453,6 +453,7 @@ public class MainApp {
         tabs.addTab("US11 · Tính giờ làm", shiftPanel);
         tabs.addTab("US13 · Thống kê", statsPanel);
         tabs.addTab("US12 · Kiểm soát ra vào", accessPanel);
+        tabs.addTab("Thử ảnh (dữ liệu giả)", new PhotoExperimentPanel(apduGateway));
         tabs.addChangeListener(e -> {
             int idx = tabs.getSelectedIndex();
             if (idx == 0) {
