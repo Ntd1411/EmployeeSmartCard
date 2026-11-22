@@ -23,8 +23,11 @@
 |--------|------|--------|--------|------|
 | Antigravity | Tạo tài liệu phân công công việc Nhóm 11 trong `docs/` | ✅ Done | Đã tạo `docs/phan-cong-cong-viec.md` (13 US, 53 SP, lịch trình 14 ngày và kế hoạch báo cáo Word) từ file phân công | < 10m |
 | Antigravity | Tạo nhánh phát triển, commit tài liệu phân công và lập kế hoạch triển khai `US10`–`US13` | ✅ Done | Tạo nhánh `feat/attendance-access-control`, commit `docs/phan-cong-cong-viec.md` và `WORKLOG.md`; tạo kế hoạch chi tiết tại `docs/dung-plan.md` | < 15m |
+| Antigravity | Triển khai Applet APDU chấm công/kiểm soát ra vào và dự án Host Eclipse cho `US10`–`US13` | ✅ Done | Cập nhật `EmployeeCardApplet.java` (lệnh `0x20`/`0x30`/`0x32`/`0x34`/`0x40`/`0x42`/`0x50`) và xây dựng project `host/` (`EmployeeSmartCardHost`) với model, provider, repository, service, Swing UI và `AttendanceAndAccessTest` | 1h |
+| Antigravity | Chuẩn hóa cấu hình biên dịch Java 17 và file `.launch` cho Eclipse trên `host/` | ✅ Done | Thêm `host/.settings/org.eclipse.jdt.core.prefs` (`--release 17`), `Run_Host_App_US10_US13.launch`, `Run_Tests_US10_US13.launch` và kiểm tra chạy 21/21 test trên JRE 25 của Eclipse | 15m |
+| Antigravity | Nối App Host trực tiếp tới Simulator `jcsl` qua APDU và mở rộng kiểm thử | ✅ Done | Thêm `ApduSimulatorCardGateway`, `SwitchableCardGateway`, thanh kết nối `jcsl` trên `MainApp`/`AccessSimulationPanel`; chạy 25/25 test đạt trên JRE 25 | 30m |
 
-**Tổng kết ngày:** Đã hoàn thiện tài liệu phân công Nhóm 11 tại `docs/phan-cong-cong-viec.md`, tạo nhánh `feat/attendance-access-control`, commit tài liệu phân công và lập kế hoạch triển khai chi tiết `US10`–`US13` tại `docs/dung-plan.md`.
+**Tổng kết ngày:** Đã hoàn thiện tài liệu phân công Nhóm 11, kế hoạch triển khai, Applet + ứng dụng Host kết nối trực tiếp Java Card Simulator (`jcsl`) cho `US10`–`US13`, đạt 25/25 test tự động trên JRE 25 của Eclipse.
 
 ---
 

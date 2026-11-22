@@ -2,6 +2,8 @@
 /.gen/
 /bin/
 /deliverables/
+/host/bin/
+/host/data/
 *.class
 
 # Eclipse local state
