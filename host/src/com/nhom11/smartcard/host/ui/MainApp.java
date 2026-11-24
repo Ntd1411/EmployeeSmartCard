@@ -2,6 +2,7 @@ package com.nhom11.smartcard.host.ui;
 
 import com.nhom11.smartcard.host.provider.ApduSimulatorCardGateway;
 import com.nhom11.smartcard.host.provider.CardGateway;
+import com.nhom11.smartcard.host.provider.FileAccessPolicyProvider;
 import com.nhom11.smartcard.host.provider.InMemoryAccessPolicyProvider;
 import com.nhom11.smartcard.host.provider.InMemoryEmployeeProvider;
 import com.nhom11.smartcard.host.provider.InMemoryVirtualCardProvider;
@@ -66,7 +67,7 @@ public class MainApp {
 
         InMemoryEmployeeProvider employeeProvider = new InMemoryEmployeeProvider();
         InMemoryVirtualCardProvider cardProvider = new InMemoryVirtualCardProvider();
-        InMemoryAccessPolicyProvider policyProvider = new InMemoryAccessPolicyProvider();
+        InMemoryAccessPolicyProvider seedPolicyProvider = new InMemoryAccessPolicyProvider();
         VirtualStoreCardGateway virtualGateway = new VirtualStoreCardGateway(cardProvider);
         ApduSimulatorCardGateway apduGateway = new ApduSimulatorCardGateway(cardProvider);
         SwitchableCardGateway switchableGateway = new SwitchableCardGateway(virtualGateway);
@@ -78,15 +79,26 @@ public class MainApp {
 
         if (attendanceRepo.findAll().isEmpty()) {
             MockSeedDataFactory.populateDemoData(
-                    employeeProvider, cardProvider, policyProvider,
+                    employeeProvider, cardProvider, seedPolicyProvider,
                     attendanceRepo, virtualGateway, LocalDate.now());
         } else {
             // Keep persisted attendance history while loading demo employee/card/policy catalog.
             FileAttendanceRepository discardRepo = new FileAttendanceRepository();
             MockSeedDataFactory.populateDemoData(
-                    employeeProvider, cardProvider, policyProvider,
+                    employeeProvider, cardProvider, seedPolicyProvider,
                     discardRepo, null, LocalDate.now());
             virtualGateway.syncFromRecords(attendanceRepo.findAll());
+        }
+
+        FileAccessPolicyProvider policyProvider;
+        try {
+            policyProvider = new FileAccessPolicyProvider(
+                    dataDir.resolve("access_policies.tsv"), employeeProvider, seedPolicyProvider);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(null,
+                    "Không thể tải quyền. File cũ không bị ghi đè; hãy kiểm tra: " + ex.getMessage(),
+                    "Lỗi dữ liệu quyền", JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
         AttendanceService attendanceService = new AttendanceService(
@@ -113,7 +125,7 @@ public class MainApp {
             }
         };
 
-        JFrame frame = new JFrame("Nhóm 11 — Quản lý Chấm công & Kiểm soát Ra vào (US10–US13)");
+        JFrame frame = new JFrame("Nhóm 11 — Quản lý Quyền, Chấm công & Kiểm soát Ra vào");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(1120, 720);
         frame.setLocationRelativeTo(null);
@@ -139,11 +151,15 @@ public class MainApp {
                 apduGateway,
                 updateSimulatorTrace);
 
+        AccessPolicyPanel policyPanel = new AccessPolicyPanel(
+                policyProvider, employeeProvider, accessPanel::refreshData);
+
         Runnable refreshAllTabs = () -> {
             attendancePanel.refreshData();
             shiftPanel.refreshData();
             statsPanel.refreshData();
             accessPanel.refreshData();
+            policyPanel.refreshData();
         };
 
         JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 4));
@@ -151,13 +167,13 @@ public class MainApp {
         resetSeedBtn.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(
                     frame,
-                    "Khôi phục toàn bộ dữ liệu chấm công và nhật ký về bộ dữ liệu mẫu ban đầu?",
+                    "Khôi phục dữ liệu chấm công và nhật ký về mẫu? Quy tắc và quyền tạm đã lưu sẽ được giữ nguyên.",
                     "Xác nhận nạp dữ liệu mẫu",
                     JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 accessLogRepo.clear();
                 MockSeedDataFactory.populateDemoData(
-                        employeeProvider, cardProvider, policyProvider,
+                        employeeProvider, cardProvider, new InMemoryAccessPolicyProvider(),
                         attendanceRepo, virtualGateway, LocalDate.now());
                 refreshAllTabs.run();
             }
@@ -453,6 +469,7 @@ public class MainApp {
         tabs.addTab("US11 · Tính giờ làm", shiftPanel);
         tabs.addTab("US13 · Thống kê", statsPanel);
         tabs.addTab("US12 · Kiểm soát ra vào", accessPanel);
+        tabs.addTab("US01–02 · Quản lý quyền", policyPanel);
         tabs.addChangeListener(e -> {
             int idx = tabs.getSelectedIndex();
             if (idx == 0) {
@@ -463,6 +480,8 @@ public class MainApp {
                 statsPanel.refreshData();
             } else if (idx == 3) {
                 accessPanel.refreshData();
+            } else if (idx == 4) {
+                policyPanel.refreshData();
             }
         });
 

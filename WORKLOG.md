@@ -34,6 +34,15 @@
 
 ---
 
+## [2026-11-24]
+
+| Member | Task | Status | Output | Time |
+|--------|------|--------|--------|------|
+| Notion AI | Triển khai quản lý quyền US01–US02 phía host | 🔄 WIP | Thêm tạo/sửa/bật tắt quy tắc, cấp/sửa/thu hồi quyền tạm; lưu file và dùng trong US12, không thay applet. Đã biên dịch bản sao host với đích Java 17, 27 kiểm tra quản lý quyền đạt trên môi trường độc lập. Hồi quy cũ 25/28 đạt; 3 test gateway phụ thuộc bộ công cụ Windows/simulator không chạy được trong môi trường này. Chưa kiểm thử UI thủ công, jcsl, 5 thẻ hoặc bảo mật thật; xem `docs/huong-dan-us01-us02.md`. | — |
+| Vũ Quốc An & Notion AI | Kiểm thử US01–US02 trên host mô phỏng | 🔄 WIP | An xác nhận bộ test US01–US02 pass; thử UI tạo và tắt quy tắc, quyền tạm trước/đúng/sau biên, mở lại host và thu hồi đều cho kết quả mong đợi. Hồi quy US10–US13 trên máy An: 25/28 pass, TC-GW-04/05/06 fail; cần kiểm tra cấu hình và simulator khi tích hợp. Sau thu hồi, thông báo có thể nhắc quyền mẫu cũ hết hạn gây nhầm lẫn. Chưa xác minh thực thi chính sách trên thẻ; chờ review và merge. | — |
+
+---
+
 ## [YYYY-MM-DD]
 
 | Member | Task | Status | Output | Time |
