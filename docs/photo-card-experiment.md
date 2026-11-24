@@ -4,7 +4,7 @@ Bản thử trên nhánh phát triển, chưa dùng cho sản phẩm hoặc dữ
 
 ## Giới hạn và an toàn
 
-**Bản thử 32 KiB đang chuẩn bị:** host và applet hỗ trợ tối đa 32768 byte trong mã thử; chưa build CAP, cài đặt hoặc xác minh trên simulator. Theo ảnh An cung cấp, bản 16 KiB trước đó đã ghi và đọc khớp file giả 16384 byte trên simulator một thẻ. Chưa kiểm thử nhiều thẻ, bảo mật hay hồi quy. Không tự nạp đè trạng thái simulator đang dùng.
+**Kết quả simulator:** An báo thử lại file giả 16384 byte vẫn đọc đúng; các mức 20480, 24576, 28672 và 32768 byte đều thất bại. Ảnh kết quả 32768 byte cho thấy BEGIN trả `6700`. Chưa xác định nguyên nhân hoặc giới hạn tối đa thực sự; 16 KiB là mức đã xác minh, không phải giới hạn phần cứng đã chứng minh. Log cho thấy CAP đã build và verify, nhưng chưa xác nhận CAP hay applet đang chạy là phiên bản 32 KiB. Chưa kiểm thử nhiều thẻ, bảo mật hay hồi quy.
 
 - Bản 32 KiB cấp hai bộ đệm 16384 byte cho mỗi instance. Nếu cài được 5 instance, riêng bộ đệm ảnh chiếm 160 KiB, chưa kể đối tượng khác; chưa biết simulator hoặc thẻ có đủ bộ nhớ. Trước đó bản 8 KiB và 16 KiB đã được người dùng xác nhận ghi/đọc trên simulator một thẻ.
 - Thẻ phải ở trạng thái ACTIVE và PIN đã được xác thực cho mọi lệnh ảnh. Deselect sẽ xóa trạng thái xác thực PIN. Bản thử **không mã hóa dữ liệu hoặc đường truyền**, chưa xác thực mật mã và không phù hợp dữ liệu thật.
@@ -26,7 +26,7 @@ CLA `80`; P1/P2 cho độ dài hoặc offset big-endian. Tất cả lệnh ảnh
 
 ## Kết quả 16 KiB và bước thử 32 KiB
 
-Theo ảnh kết quả An cung cấp, host đã ghi và đọc lại đúng file giả 16384 byte trên simulator một thẻ. Bản 32 KiB dùng hai vùng nhớ và chỉ số byte cuối (tối đa 32767); 12 kiểm tra host qua kênh giả và kiểm tra logic applet với API giả đạt, chưa thay thế được việc build CAP hay thử simulator. Khi cài bản mới, bảo vệ EEPROM trước: gỡ instance cũ có thể xóa dữ liệu. Nếu cài thành công, thử file giả 32768 byte ở chế độ một thẻ. Đối chiếu byte không đồng nghĩa ảnh được hiển thị hay đã bảo mật.
+Trên simulator một thẻ, An xác nhận 16384 byte đọc lại đúng; 20480, 24576, 28672 và 32768 byte không thành công. Trường hợp 32768 báo BEGIN `6700`; chưa có chi tiết lỗi các mức còn lại. Bản 32 KiB dùng hai vùng nhớ và chỉ số byte cuối; test host và logic applet qua API giả đạt nhưng không chứng minh kết quả trên simulator. Tạm dừng tăng dung lượng và dùng 16 KiB đã kiểm chứng làm cơ sở thử ảnh giả. Cài lại applet có thể xóa dữ liệu instance cũ; phải bảo vệ EEPROM trước. Đối chiếu byte không đồng nghĩa ảnh được hiển thị hay đã bảo mật.
 
 ## Xác minh trước khi dùng tiếp
 
