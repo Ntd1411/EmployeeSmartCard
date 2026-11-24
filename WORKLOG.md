@@ -44,6 +44,7 @@
 | Notion AI | Bắt đầu dịch vụ trạng thái thẻ US03 | 🔄 WIP | Thêm dịch vụ lưu trạng thái host, chặn khôi phục thẻ thu hồi và điểm kiểm tra quyền; trên bản sao Linux biên dịch Java 17, test mới đạt 10/10 kiểm tra và US01–US02 đạt 27 kiểm tra. Chưa nối giao diện hay applet; chưa nghiệm thu trên máy An. | — |
 | Notion AI | Bắt đầu dịch vụ tài khoản US04 | 🔄 WIP | Thêm dịch vụ tài khoản local với phiên đăng nhập, vai trò, tạo/sửa/xóa, PBKDF2 có salt và giữ ít nhất một quản trị viên; 12/12 kiểm tra trên bản sao Linux. Chưa nối giao diện hay bảo vệ các luồng quản trị hiện có; ảnh chưa tích hợp. | — |
 | Notion AI | Nối giao diện US03–US04 phía host | 🔄 WIP | Thêm tab tài khoản, kiểm tra quyền đối với thay đổi chính sách và thẻ, lưu trạng thái thẻ ảo. Trên bản sao Linux biên dịch Java 17: AccountServiceTest 13, CardLifecycleServiceTest 10, PolicyAuthorizationTest 4, AccessPolicyManagementTest 27 kiểm tra đạt; bộ cũ 25/28 với GW-04/05/06 thất bại trong môi trường thiếu công cụ Windows. Chưa test UI trên máy An; đang chặn đổi trạng thái khi jcsl kết nối vì chưa đồng bộ an toàn host/applet; chưa tích hợp ảnh. | — |
+| Notion AI | Chuẩn bị độc lập xử lý ảnh 16 KiB | 🔄 WIP | Chọn lọc `PhotoTransfer` 16 KiB từ nhánh thử ảnh, thêm chuẩn bị JPEG và test dữ liệu sinh: PhotoTransferTest 9, PhotoPreparationTest 5 kiểm tra đạt trên bản sao Linux. Chưa nối applet/UI, chưa thử jcsl trên nhánh này, chưa kết nối US07/US05, chưa mã hóa. Hướng dẫn kiểm tra host: `docs/kiem-thu-us03-us04.md`. | — |
 
 ---
 
