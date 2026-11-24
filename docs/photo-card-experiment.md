@@ -4,7 +4,7 @@ Bản thử trên nhánh phát triển, chưa dùng cho sản phẩm hoặc dữ
 
 ## Giới hạn và an toàn
 
-**Bản thử mới đang chuẩn bị:** giới hạn được nâng lên 16384 byte (16 KiB) trên host và applet; chưa xác minh CAP, cài đặt hoặc ghi/đọc trên simulator. Số liệu 8192 byte bên dưới là kết quả đã quan sát của bản trước. Không tự nạp đè trạng thái simulator đang dùng.
+**Bản thử 16 KiB:** theo ảnh An cung cấp, host kết nối simulator một thẻ đã ghi và đọc lại khớp file giả 16384 byte. Chưa kiểm thử 32 KiB, nhiều thẻ, bảo mật hay hồi quy. Số liệu 8192 byte bên dưới là kết quả đã quan sát của bản trước. Không tự nạp đè trạng thái simulator đang dùng.
 
 - Bản trước đặt bộ đệm 8192 byte mỗi instance và theo log người dùng đã đọc lại đúng file giả 8192 byte trên simulator một thẻ. Bản 16 KiB mới cấp 16384 byte mỗi instance: nếu cài được 5 instance thì riêng bộ đệm ảnh chiếm 80 KiB, chưa kể đối tượng khác. Chưa xác định có đủ bộ nhớ trên simulator hoặc thẻ.
 - Thẻ phải ở trạng thái ACTIVE và PIN đã được xác thực cho mọi lệnh ảnh. Deselect sẽ xóa trạng thái xác thực PIN. Bản thử **không mã hóa dữ liệu hoặc đường truyền**, chưa xác thực mật mã và không phù hợp dữ liệu thật.
@@ -26,7 +26,7 @@ CLA `80`; P1/P2 cho độ dài hoặc offset big-endian. Tất cả lệnh ảnh
 
 ## Thử 16 KiB tiếp theo
 
-Build CAP, dùng simulator và dữ liệu giả riêng sau khi bảo vệ EEPROM hiện có; cài bản mới rồi ghi/đọc đối chiếu file giả 16384 byte. Việc cài lại có thể xóa dữ liệu instance cũ. Đối chiếu byte không đồng nghĩa ảnh được hiển thị hay đã bảo mật. Kiểm tra một file vượt giới hạn bị từ chối; nếu cài hoặc thử thất bại, giữ log và dừng. Sau khi có kết quả mới quyết định thử tiếp 32 KiB; 32768 không biểu diễn được bằng short dương trong giao thức hiện tại và không thể chỉ đổi hằng số.
+Theo ảnh kết quả An cung cấp, host đã ghi và đọc lại đúng file giả 16384 byte trên simulator một thẻ. Đối chiếu byte không đồng nghĩa ảnh được hiển thị hay đã bảo mật. Host đã kiểm tra từ chối file vượt giới hạn bằng kênh giả; chưa xác nhận kiểm thử này trên giao diện. Bước tiếp theo là chuẩn bị thử 32 KiB: 32768 không biểu diễn được bằng short dương trong giao thức hiện tại và không thể chỉ đổi hằng số. Cài lại applet có thể xóa dữ liệu instance cũ; phải bảo vệ trạng thái simulator trước.
 
 ## Xác minh trước khi dùng tiếp
 

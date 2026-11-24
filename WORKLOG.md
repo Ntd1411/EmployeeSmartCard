@@ -8,7 +8,8 @@
 
 | Member | Task | Status | Output | Time |
 |--------|------|--------|--------|------|
-| Notion AI | Chuẩn bị thử dữ liệu ảnh 16 KiB | 🔄 WIP | Nâng giới hạn host và applet lên 16384 byte; 9 kiểm tra host qua kênh APDU giả đạt trên Java 25, biên dịch đích Java 17. Chưa build CAP, cài hoặc kiểm thử simulator 16 KiB. Mức 32 KiB cần xử lý giới hạn short trước khi thử. Chỉ dùng dữ liệu giả; xem `docs/photo-card-experiment.md`. | — |
+| Notion AI | Chuẩn bị thử dữ liệu ảnh 16 KiB | 🔄 WIP | Nâng giới hạn host và applet lên 16384 byte; 9 kiểm tra host qua kênh APDU giả đạt trên Java 25, biên dịch đích Java 17. Mức 32 KiB cần xử lý giới hạn short trước khi thử. Chỉ dùng dữ liệu giả; xem `docs/photo-card-experiment.md`. | — |
+| Vũ Quốc An & Notion AI | Thử truyền ảnh giả 16 KiB trên simulator | 🔄 WIP | An gửi ảnh host ở chế độ jcsl một thẻ báo đọc lại đúng 16384 byte sau khi ghi. Chưa thử 32 KiB, nhiều thẻ, ảnh chân dung, bảo mật hay hồi quy. | — |
 
 ---
 
