@@ -13,12 +13,15 @@ public final class PhotoTransferTest {
         testRoundTrip(128);
         testRoundTrip(300);
         testRoundTrip(8192);
+        testRoundTrip(16383);
+        testRoundTrip(16384);
+        testRoundTrip(16385);
         testRoundTrip(PhotoTransfer.MAX_SIZE - 1);
         testRoundTrip(PhotoTransfer.MAX_SIZE);
         testInvalidSize();
         testStatusStopsTransfer();
         testShortReadFails();
-        System.out.println("PhotoTransferTest: all 9 checks passed.");
+        System.out.println("PhotoTransferTest: all 12 checks passed.");
     }
 
     private static void testRoundTrip(int length) throws Exception {

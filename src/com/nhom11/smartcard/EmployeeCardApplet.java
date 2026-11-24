@@ -55,7 +55,9 @@ public class EmployeeCardApplet extends Applet {
     private static final short RECORD_SIZE = (short) 6;
     private static final short PUNCH_PAYLOAD_SIZE = (short) 5;
     private static final short TIMESTAMP_SIZE = (short) 4;
-    private static final short PHOTO_MAX_SIZE = (short) 16384;
+    // Maximum valid byte offset is 32767; the 32768-byte length is encoded as 0x8000.
+    private static final short PHOTO_BANK_SIZE = (short) 16384;
+    private static final short PHOTO_LENGTH_32K = (short) 0x8000;
     private static final short PHOTO_MAX_READ = (short) 128;
 
     // Development fallback PIN used only when install parameters omit app data.
@@ -66,10 +68,12 @@ public class EmployeeCardApplet extends Applet {
     private final OwnerPIN pin;
     private final byte[] areaPermissionMask;
     private final byte[] attendanceBuffer;
-    private final byte[] photoBuffer;
+    private final byte[] photoBufferFirst;
+    private final byte[] photoBufferSecond;
 
-    private short photoExpected;
+    private short photoExpectedLast; // Last index, always in 0..32767.
     private short photoWritten;
+    private boolean photoComplete;
     private boolean photoUploading;
     private boolean photoReady;
 
@@ -108,7 +112,8 @@ public class EmployeeCardApplet extends Applet {
         pin = new OwnerPIN(PIN_TRY_LIMIT, MAX_PIN_SIZE);
         areaPermissionMask = new byte[AREA_MASK_SIZE];
         attendanceBuffer = new byte[(short) (MAX_ATTENDANCE_ENTRIES * RECORD_SIZE)];
-        photoBuffer = new byte[PHOTO_MAX_SIZE];
+        photoBufferFirst = new byte[PHOTO_BANK_SIZE];
+        photoBufferSecond = new byte[PHOTO_BANK_SIZE];
 
         cardStatus = STATUS_ACTIVE;
         currentShiftState = SHIFT_CLOSED;
@@ -469,27 +474,29 @@ public class EmployeeCardApplet extends Applet {
         }
     }
 
-    /** P1/P2 contain total length; beginning invalidates the old photo. */
+    /** P1/P2 encode a length in 1..32768; beginning invalidates the old photo. */
     private void beginPhoto(short length) {
-        if (length <= (short) 0 || length > PHOTO_MAX_SIZE) {
+        if (length <= (short) 0 && length != PHOTO_LENGTH_32K) {
             ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
         }
         JCSystem.beginTransaction();
         photoReady = false;
-        photoExpected = length;
+        photoExpectedLast = (short) (length - (short) 1);
         photoWritten = (short) 0;
+        photoComplete = false;
         photoUploading = true;
         JCSystem.commitTransaction();
     }
 
-    /** Accepts only the next sequential chunk; data stays unreadable until finish. */
+    /** Accepts sequential chunks, including chunks spanning the bank boundary. */
     private void writePhoto(APDU apdu, short offset) {
-        if (!photoUploading || offset != photoWritten) {
+        if (!photoUploading || photoComplete || offset < (short) 0 || offset != photoWritten) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
         short received = apdu.setIncomingAndReceive();
         short incoming = apdu.getIncomingLength();
-        if (incoming <= (short) 0 || incoming > (short) (photoExpected - photoWritten)) {
+        short remainingLast = (short) (photoExpectedLast - photoWritten);
+        if (incoming <= (short) 0 || (short) (incoming - (short) 1) > remainingLast) {
             ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
         }
         short total = (short) 0;
@@ -498,19 +505,31 @@ public class EmployeeCardApplet extends Applet {
             if (received <= (short) 0 || received > (short) (incoming - total)) {
                 ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
             }
-            Util.arrayCopyNonAtomic(apdu.getBuffer(), dataOffset, photoBuffer,
-                    (short) (offset + total), received);
-            total = (short) (total + received);
-            if (total < incoming) {
-                received = apdu.receiveBytes(dataOffset);
+            short position = (short) (offset + total);
+            short firstCount = (short) 0;
+            if (position < PHOTO_BANK_SIZE) {
+                firstCount = (short) (PHOTO_BANK_SIZE - position);
+                if (firstCount > received) firstCount = received;
+                Util.arrayCopyNonAtomic(apdu.getBuffer(), dataOffset, photoBufferFirst, position, firstCount);
             }
+            if (firstCount < received) {
+                short secondOffset = position < PHOTO_BANK_SIZE ? (short) 0 : (short) (position - PHOTO_BANK_SIZE);
+                Util.arrayCopyNonAtomic(apdu.getBuffer(), (short) (dataOffset + firstCount), photoBufferSecond,
+                        secondOffset, (short) (received - firstCount));
+            }
+            total = (short) (total + received);
+            if (total < incoming) received = apdu.receiveBytes(dataOffset);
         }
-        photoWritten = (short) (photoWritten + total);
+        if ((short) (incoming - (short) 1) == remainingLast) {
+            photoComplete = true;
+        } else {
+            photoWritten = (short) (photoWritten + incoming);
+        }
     }
 
     /** Makes a complete upload readable. */
     private void finishPhoto() {
-        if (!photoUploading || photoWritten != photoExpected) {
+        if (!photoUploading || !photoComplete) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
         JCSystem.beginTransaction();
@@ -519,27 +538,31 @@ public class EmployeeCardApplet extends Applet {
         JCSystem.commitTransaction();
     }
 
-    /** Reads at most 128 bytes, starting at P1/P2 and bounded by Le. */
+    /** Reads at most 128 bytes; a 32768-byte photo ends at offset 32767. */
     private void readPhoto(APDU apdu, short offset) {
         if (!photoReady) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
-        if (offset < (short) 0 || offset >= photoExpected) {
+        if (offset < (short) 0 || offset > photoExpectedLast) {
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         }
         short le = apdu.setOutgoing();
-        short count = (short) (photoExpected - offset);
-        if (count > PHOTO_MAX_READ) {
-            count = PHOTO_MAX_READ;
-        }
-        if (le < count) {
-            count = le;
-        }
-        if (count <= (short) 0) {
-            ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
-        }
+        short remainingLast = (short) (photoExpectedLast - offset);
+        short count = remainingLast >= (short) (PHOTO_MAX_READ - (short) 1)
+                ? PHOTO_MAX_READ : (short) (remainingLast + (short) 1);
+        if (le < count) count = le;
+        if (count <= (short) 0) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
         apdu.setOutgoingLength(count);
-        apdu.sendBytesLong(photoBuffer, offset, count);
+        short firstCount = (short) 0;
+        if (offset < PHOTO_BANK_SIZE) {
+            firstCount = (short) (PHOTO_BANK_SIZE - offset);
+            if (firstCount > count) firstCount = count;
+            apdu.sendBytesLong(photoBufferFirst, offset, firstCount);
+        }
+        if (firstCount < count) {
+            short secondOffset = offset < PHOTO_BANK_SIZE ? (short) 0 : (short) (offset - PHOTO_BANK_SIZE);
+            apdu.sendBytesLong(photoBufferSecond, secondOffset, (short) (count - firstCount));
+        }
     }
 
     private boolean hasNonZeroBytes(byte[] data, short offset, short length) {

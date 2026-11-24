@@ -8,7 +8,7 @@ import javax.smartcardio.ResponseAPDU;
 
 /** Experimental byte transfer only; not secure for real employee photographs. */
 public final class PhotoTransfer {
-    public static final int MAX_SIZE = 16384;
+    public static final int MAX_SIZE = 32768;
     private static final int CHUNK_SIZE = 128;
 
     private PhotoTransfer() {
