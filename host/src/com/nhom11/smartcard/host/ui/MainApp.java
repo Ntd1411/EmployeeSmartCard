@@ -12,6 +12,8 @@ import com.nhom11.smartcard.host.provider.VirtualStoreCardGateway;
 import com.nhom11.smartcard.host.repository.FileAccessLogRepository;
 import com.nhom11.smartcard.host.repository.FileAttendanceRepository;
 import com.nhom11.smartcard.host.service.AccessControlService;
+import com.nhom11.smartcard.host.service.CardLifecycleService;
+import com.nhom11.smartcard.host.service.AccountService;
 import com.nhom11.smartcard.host.service.AttendanceService;
 import com.nhom11.smartcard.host.service.AttendanceStatisticsService;
 import com.nhom11.smartcard.host.service.ShiftPairingService;
@@ -91,12 +93,16 @@ public class MainApp {
         }
 
         FileAccessPolicyProvider policyProvider;
+        AccountService accountService;
+        CardLifecycleService lifecycle;
         try {
+            accountService = new AccountService(dataDir.resolve("accounts.tsv"));
+            lifecycle = new CardLifecycleService(dataDir.resolve("card_statuses.tsv"), cardProvider, accountService::requireAdmin);
             policyProvider = new FileAccessPolicyProvider(
-                    dataDir.resolve("access_policies.tsv"), employeeProvider, seedPolicyProvider);
+                    dataDir.resolve("access_policies.tsv"), employeeProvider, seedPolicyProvider, accountService::requireAdmin);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(null,
-                    "Không thể tải quyền. File cũ không bị ghi đè; hãy kiểm tra: " + ex.getMessage(),
+                    "Không thể tải tài khoản, trạng thái thẻ hoặc quyền. File cũ không bị ghi đè; hãy kiểm tra: " + ex.getMessage(),
                     "Lỗi dữ liệu quyền", JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -149,7 +155,9 @@ public class MainApp {
                 securityCheck::isSelected,
                 attendancePanel::refreshData,
                 apduGateway,
-                updateSimulatorTrace);
+                updateSimulatorTrace,
+                lifecycle,
+                accountService::requireAdmin);
 
         AccessPolicyPanel policyPanel = new AccessPolicyPanel(
                 policyProvider, employeeProvider, accessPanel::refreshData);
@@ -165,6 +173,7 @@ public class MainApp {
         JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 4));
         JButton resetSeedBtn = new JButton("Nạp lại dữ liệu mẫu");
         resetSeedBtn.addActionListener(e -> {
+            if (!accountService.isAdmin()) { JOptionPane.showMessageDialog(frame, "Cần đăng nhập quản trị."); return; }
             int confirm = JOptionPane.showConfirmDialog(
                     frame,
                     "Khôi phục dữ liệu chấm công và nhật ký về mẫu? Quy tắc và quyền tạm đã lưu sẽ được giữ nguyên.",
@@ -175,6 +184,7 @@ public class MainApp {
                 MockSeedDataFactory.populateDemoData(
                         employeeProvider, cardProvider, new InMemoryAccessPolicyProvider(),
                         attendanceRepo, virtualGateway, LocalDate.now());
+                lifecycle.applySavedStates();
                 refreshAllTabs.run();
             }
         });
@@ -210,6 +220,7 @@ public class MainApp {
         };
 
         deployBtn.addActionListener(e -> {
+            if (!accountService.isAdmin()) { JOptionPane.showMessageDialog(frame, "Cần đăng nhập quản trị."); return; }
             String host = hostField.getText().trim();
             int port;
             try {
@@ -260,7 +271,7 @@ public class MainApp {
                     pinField.setEnabled(true);
                     if (outcome.deployed) {
                         switchableGateway.useDelegate(apduGateway);
-                        deployBtn.setEnabled(true);
+                        deployBtn.setEnabled(accountService.isAdmin());
                         connectBtn.setEnabled(false);
                         hostField.setEnabled(false);
                         portField.setEnabled(false);
@@ -281,7 +292,7 @@ public class MainApp {
                                 JOptionPane.INFORMATION_MESSAGE);
                     } else {
                         switchableGateway.useDelegate(virtualGateway);
-                        deployBtn.setEnabled(true);
+                        deployBtn.setEnabled(accountService.isAdmin());
                         connectBtn.setEnabled(true);
                         hostField.setEnabled(true);
                         portField.setEnabled(true);
@@ -346,7 +357,7 @@ public class MainApp {
                         outcome = new ConnectOutcome(false, null, ex.getMessage());
                     }
                     pinField.setEnabled(true);
-                    deployBtn.setEnabled(true);
+                    deployBtn.setEnabled(accountService.isAdmin());
                     if (outcome.connected) {
                         switchableGateway.useDelegate(apduGateway);
                         connectBtn.setEnabled(false);
@@ -432,7 +443,7 @@ public class MainApp {
         disconnectBtn.addActionListener(e -> {
             apduGateway.disconnect();
             switchableGateway.useDelegate(virtualGateway);
-            deployBtn.setEnabled(true);
+            deployBtn.setEnabled(accountService.isAdmin());
             connectBtn.setEnabled(true);
             hostField.setEnabled(true);
             portField.setEnabled(true);
@@ -469,7 +480,22 @@ public class MainApp {
         tabs.addTab("US11 · Tính giờ làm", shiftPanel);
         tabs.addTab("US13 · Thống kê", statsPanel);
         tabs.addTab("US12 · Kiểm soát ra vào", accessPanel);
-        tabs.addTab("US01–02 · Quản lý quyền", policyPanel);
+        AccountPanel accountPanel = new AccountPanel(accountService, () -> {
+            boolean admin = accountService.isAdmin();
+            accessPanel.setAdminAccess(admin);
+            int index = tabs.indexOfComponent(policyPanel);
+            if (admin && index < 0) tabs.addTab("US01–02 · Quản lý quyền", policyPanel);
+            else if (!admin && index >= 0) tabs.remove(policyPanel);
+            resetSeedBtn.setEnabled(admin);
+            securityCheck.setEnabled(admin);
+            if (!admin) securityCheck.setSelected(true);
+            deployBtn.setEnabled(admin && !apduGateway.isConnected());
+        });
+        tabs.addTab("US04 · Tài khoản", accountPanel);
+        resetSeedBtn.setEnabled(false);
+        accessPanel.setAdminAccess(false);
+        securityCheck.setEnabled(false);
+        deployBtn.setEnabled(false);
         tabs.addChangeListener(e -> {
             int idx = tabs.getSelectedIndex();
             if (idx == 0) {
@@ -480,8 +506,10 @@ public class MainApp {
                 statsPanel.refreshData();
             } else if (idx == 3) {
                 accessPanel.refreshData();
-            } else if (idx == 4) {
+            } else if (tabs.getSelectedComponent() == policyPanel) {
                 policyPanel.refreshData();
+            } else if (tabs.getSelectedComponent() == accountPanel) {
+                accountPanel.refresh();
             }
         });
 

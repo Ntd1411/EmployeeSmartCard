@@ -17,6 +17,8 @@ public final class AccountServiceTest {
         catch(SecurityException expected) { check(true,"guard"); }
         check(s.login("admin","demo-pass-1".toCharArray()) && s.isAdmin(),"admin login");
         s.create("user","demo-pass-2".toCharArray(),AccountService.Role.USER);
+        javax.swing.SwingUtilities.invokeAndWait(() -> new com.nhom11.smartcard.host.ui.AccountPanel(s, () -> {}));
+        check(true, "panel constructs in headless mode");
         try { s.delete("admin"); throw new AssertionError("last admin deleted"); } catch(IllegalArgumentException expected) { check(true,"last admin"); }
         s.update("user","demo-pass-3".toCharArray(),AccountService.Role.USER);
         s.logout(); check(!s.login("user","demo-pass-2".toCharArray()),"old password rejected");

@@ -24,7 +24,7 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 
-/** Local administrative demo only; no login or authorization is provided by this panel. */
+/** Host-side administrative panel; authorization is enforced by the configured provider. */
 public final class AccessPolicyPanel extends JPanel {
     private final FileAccessPolicyProvider policies;
     private final EmployeeProvider employees;
@@ -43,7 +43,7 @@ public final class AccessPolicyPanel extends JPanel {
         this.policies = policies;
         this.employees = employees;
         this.afterChange = afterChange;
-        add(new JLabel("Quản trị mô phỏng trên host — chưa có đăng nhập/phân quyền quản trị (US04)."), BorderLayout.NORTH);
+        add(new JLabel("Quản trị mô phỏng trên host — chính sách chưa được đồng bộ xuống thẻ."), BorderLayout.NORTH);
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("US01 · Quy tắc cố định", rulesPanel());
         tabs.addTab("US02 · Quyền tạm thời", grantsPanel());

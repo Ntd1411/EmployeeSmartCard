@@ -12,6 +12,7 @@ import com.nhom11.smartcard.host.provider.CardGateway;
 import com.nhom11.smartcard.host.provider.EmployeeProvider;
 import com.nhom11.smartcard.host.provider.VirtualCardProvider;
 import com.nhom11.smartcard.host.service.AccessControlService;
+import com.nhom11.smartcard.host.service.CardLifecycleService;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -47,6 +48,8 @@ public class AccessSimulationPanel extends JPanel {
     private final Runnable onCardStateChanged;
     private final ApduSimulatorCardGateway simulatorGateway;
     private final Runnable onGatewayActivity;
+    private final CardLifecycleService lifecycle;
+    private final Runnable requireAdmin;
 
     private final JComboBox<SelectOption> cardCombo = new JComboBox<>();
     private final JComboBox<SelectOption> areaCombo = new JComboBox<>();
@@ -54,6 +57,7 @@ public class AccessSimulationPanel extends JPanel {
     private final JComboBox<CardStatus> quickStatusCombo = new JComboBox<>(CardStatus.values());
     private final JCheckBox quickPinBox = new JCheckBox("PIN đã xác thực");
     private final JCheckBox quickCryptoBox = new JCheckBox("AES/RSA hợp lệ");
+    private final JPanel quickPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
 
     private final JLabel decisionBanner = new JLabel("Chọn thẻ, khu vực, thời điểm và nhấn Kiểm tra ra vào.");
     private final DefaultTableModel tableModel = UiTheme.readOnlyTableModel(
@@ -81,6 +85,17 @@ public class AccessSimulationPanel extends JPanel {
             Runnable onCardStateChanged,
             ApduSimulatorCardGateway simulatorGateway,
             Runnable onGatewayActivity) {
+        this(employeeProvider, cardProvider, policyProvider, accessControlService, securityCheckEnabled,
+                onCardStateChanged, simulatorGateway, onGatewayActivity, null, () -> { });
+    }
+
+    public AccessSimulationPanel(EmployeeProvider employeeProvider, VirtualCardProvider cardProvider,
+            AccessPolicyProvider policyProvider, AccessControlService accessControlService,
+            BooleanSupplier securityCheckEnabled, Runnable onCardStateChanged,
+            ApduSimulatorCardGateway simulatorGateway, Runnable onGatewayActivity,
+            CardLifecycleService lifecycle, Runnable requireAdmin) {
+        this.lifecycle = lifecycle;
+        this.requireAdmin = requireAdmin;
         this.employeeProvider = employeeProvider;
         this.cardProvider = cardProvider;
         this.policyProvider = policyProvider;
@@ -100,6 +115,11 @@ public class AccessSimulationPanel extends JPanel {
         add(decisionBanner, BorderLayout.SOUTH);
 
         refreshData();
+    }
+
+    /** The host hides simulation state controls from non-admin sessions. */
+    public void setAdminAccess(boolean admin) {
+        quickPanel.setVisible(admin);
     }
 
     private JPanel buildSimulationForm() {
@@ -164,7 +184,6 @@ public class AccessSimulationPanel extends JPanel {
         gbc.weightx = 0.0;
         form.add(new JLabel("Điều chỉnh thẻ mô phỏng:"), gbc);
 
-        JPanel quickPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         quickPanel.add(quickStatusCombo);
         quickPanel.add(quickPinBox);
         quickPanel.add(quickCryptoBox);
@@ -229,21 +248,25 @@ public class AccessSimulationPanel extends JPanel {
         if (card == null) {
             return;
         }
-        CardStatus targetStatus = (CardStatus) quickStatusCombo.getSelectedItem();
-        card.setStatus(targetStatus);
-        card.setPinVerified(quickPinBox.isSelected());
-        card.setCryptoVerified(quickCryptoBox.isSelected());
-        onCardStateChanged.run();
-
-        if (simulatorGateway != null && simulatorGateway.isConnected()) {
-            CardGateway.CardGatewayResult simRes = simulatorGateway.setCardStatus(card.getCardId(), targetStatus);
-            onGatewayActivity.run();
-            UiTheme.setBanner(decisionBanner, simRes.isSuccess(),
-                    "Đã cập nhật " + card.getCardId() + " (" + targetStatus + ") | jcsl: "
-                            + simRes.getMessage() + " (SW=" + String.format("0x%04X", simRes.getStatusWord()) + ")");
-        } else {
+        try {
+            requireAdmin.run();
+            CardStatus targetStatus = (CardStatus) quickStatusCombo.getSelectedItem();
+            if (lifecycle != null) {
+                if (simulatorGateway != null && simulatorGateway.isConnected() && card.getStatus() != targetStatus) {
+                    throw new IllegalStateException("Chưa hỗ trợ đồng bộ trạng thái thẻ với jcsl an toàn; hãy ngắt jcsl trước khi đổi trạng thái host.");
+                }
+                lifecycle.changeStatus(card.getCardId(), targetStatus);
+            } else {
+                card.setStatus(targetStatus);
+            }
+            card.setPinVerified(targetStatus == CardStatus.ACTIVE && quickPinBox.isSelected());
+            card.setCryptoVerified(quickCryptoBox.isSelected());
+            onCardStateChanged.run();
             UiTheme.setNeutralBanner(decisionBanner,
-                    "Đã cập nhật trạng thái mô phỏng cho " + card.getCardId() + ": " + targetStatus);
+                    "Đã cập nhật trạng thái host cho " + card.getCardId() + ": " + targetStatus);
+        } catch (Exception ex) {
+            syncQuickCardControls();
+            UiTheme.setBanner(decisionBanner, false, ex.getMessage());
         }
     }
 

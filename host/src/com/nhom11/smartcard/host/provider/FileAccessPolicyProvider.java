@@ -24,14 +24,20 @@ public final class FileAccessPolicyProvider implements AccessPolicyProvider {
     private static final String HEADER = "EMPLOYEE_ACCESS_POLICY_V1";
     private final Path file;
     private final EmployeeProvider employees;
+    private final Runnable requireAdmin;
     private final List<Area> areas;
     private List<AccessRule> rules;
     private List<TemporaryGrant> grants;
 
     /** Seed once only when no file exists. A broken file fails closed and is never overwritten. */
     public FileAccessPolicyProvider(Path file, EmployeeProvider employees, InMemoryAccessPolicyProvider seed) throws IOException {
+        this(file, employees, seed, () -> { });
+    }
+
+    public FileAccessPolicyProvider(Path file, EmployeeProvider employees, InMemoryAccessPolicyProvider seed, Runnable requireAdmin) throws IOException {
         this.file = Objects.requireNonNull(file).toAbsolutePath();
         this.employees = Objects.requireNonNull(employees);
+        this.requireAdmin = Objects.requireNonNull(requireAdmin);
         this.areas = List.copyOf(seed.findAllAreas());
         List<AccessRule> initialRules = new ArrayList<>();
         List<TemporaryGrant> initialGrants = new ArrayList<>();
@@ -66,6 +72,7 @@ public final class FileAccessPolicyProvider implements AccessPolicyProvider {
 
     /** Inserts or replaces by immutable ID. File is replaced before the live snapshot changes. */
     public synchronized void saveRule(AccessRule rule) throws IOException {
+        requireAdmin.run();
         Objects.requireNonNull(rule);
         List<AccessRule> next = new ArrayList<>(rules);
         next.removeIf(r -> r.getRuleId().equals(rule.getRuleId()));
@@ -75,6 +82,7 @@ public final class FileAccessPolicyProvider implements AccessPolicyProvider {
         rules = next;
     }
     public synchronized void saveGrant(TemporaryGrant grant) throws IOException {
+        requireAdmin.run();
         Objects.requireNonNull(grant);
         for (TemporaryGrant old : grants) {
             if (old.getGrantId().equals(grant.getGrantId()) && old.isRevoked() && !grant.isRevoked()) {
