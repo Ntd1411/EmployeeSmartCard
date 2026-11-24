@@ -4,6 +4,14 @@
 
 ---
 
+## [2026-11-24]
+
+| Member | Task | Status | Output | Time |
+|--------|------|--------|--------|------|
+| Notion AI | Chuẩn bị thử dữ liệu ảnh 16 KiB | 🔄 WIP | Nâng giới hạn host và applet lên 16384 byte; 9 kiểm tra host qua kênh APDU giả đạt trên Java 25, biên dịch đích Java 17. Chưa build CAP, cài hoặc kiểm thử simulator 16 KiB. Mức 32 KiB cần xử lý giới hạn short trước khi thử. Chỉ dùng dữ liệu giả; xem `docs/photo-card-experiment.md`. | — |
+
+---
+
 ## [2026-11-20]
 
 | Member | Task | Status | Output | Time |

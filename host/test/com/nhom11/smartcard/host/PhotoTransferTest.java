@@ -12,11 +12,13 @@ public final class PhotoTransferTest {
         testRoundTrip(1);
         testRoundTrip(128);
         testRoundTrip(300);
+        testRoundTrip(8192);
+        testRoundTrip(PhotoTransfer.MAX_SIZE - 1);
         testRoundTrip(PhotoTransfer.MAX_SIZE);
         testInvalidSize();
         testStatusStopsTransfer();
         testShortReadFails();
-        System.out.println("PhotoTransferTest: all 7 checks passed.");
+        System.out.println("PhotoTransferTest: all 9 checks passed.");
     }
 
     private static void testRoundTrip(int length) throws Exception {
@@ -30,11 +32,16 @@ public final class PhotoTransferTest {
     }
 
     private static void testInvalidSize() throws Exception {
-        try {
-            PhotoTransfer.roundTrip(new FakeChannel(), new byte[PhotoTransfer.MAX_SIZE + 1]);
-            throw new AssertionError("Expected size rejection");
-        } catch (IllegalArgumentException expected) {
-            // Expected before any APDU is sent.
+        for (int length : new int[] { 0, PhotoTransfer.MAX_SIZE + 1 }) {
+            FakeChannel fake = new FakeChannel();
+            try {
+                PhotoTransfer.roundTrip(fake, new byte[length]);
+                throw new AssertionError("Expected size rejection for " + length);
+            } catch (IllegalArgumentException expected) {
+                if (fake.data != null) {
+                    throw new AssertionError("Invalid size sent an APDU", expected);
+                }
+            }
         }
     }
 

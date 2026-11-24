@@ -27,7 +27,7 @@ public class PhotoExperimentPanel extends JPanel {
         this.gateway = gateway;
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
         actions.add(testButton);
-        add(new JLabel("Chỉ dùng ảnh giả, tối đa 8192 byte. Dữ liệu chưa được mã hóa."), BorderLayout.NORTH);
+        add(new JLabel("Chỉ dùng ảnh giả, tối đa " + PhotoTransfer.MAX_SIZE + " byte. Dữ liệu chưa được mã hóa."), BorderLayout.NORTH);
         add(actions, BorderLayout.CENTER);
         add(status, BorderLayout.SOUTH);
         testButton.addActionListener(e -> startTest());
@@ -41,7 +41,7 @@ public class PhotoExperimentPanel extends JPanel {
             return;
         }
         JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Chọn ảnh giả tối đa 8192 byte");
+        chooser.setDialogTitle("Chọn ảnh giả tối đa " + PhotoTransfer.MAX_SIZE + " byte");
         chooser.setFileFilter(new FileNameExtensionFilter("Ảnh thử (PNG, JPEG, GIF)", "png", "jpg", "jpeg", "gif"));
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
@@ -65,7 +65,7 @@ public class PhotoExperimentPanel extends JPanel {
                     bytes = input.readNBytes(PhotoTransfer.MAX_SIZE + 1);
                 }
                 if (bytes.length < 1 || bytes.length > PhotoTransfer.MAX_SIZE) {
-                    throw new IllegalArgumentException("File phải có từ 1 đến 8192 byte. Không có dữ liệu nào được gửi.");
+                    throw new IllegalArgumentException("File phải có từ 1 đến " + PhotoTransfer.MAX_SIZE + " byte. Không có dữ liệu nào được gửi.");
                 }
                 try {
                     boolean match = gateway.verifyPhotoRoundTrip(bytes);

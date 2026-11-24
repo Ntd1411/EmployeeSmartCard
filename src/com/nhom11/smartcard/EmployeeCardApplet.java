@@ -55,7 +55,7 @@ public class EmployeeCardApplet extends Applet {
     private static final short RECORD_SIZE = (short) 6;
     private static final short PUNCH_PAYLOAD_SIZE = (short) 5;
     private static final short TIMESTAMP_SIZE = (short) 4;
-    private static final short PHOTO_MAX_SIZE = (short) 8192;
+    private static final short PHOTO_MAX_SIZE = (short) 16384;
     private static final short PHOTO_MAX_READ = (short) 128;
 
     // Development fallback PIN used only when install parameters omit app data.
